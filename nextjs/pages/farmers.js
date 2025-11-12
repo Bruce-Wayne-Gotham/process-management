@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabaseClient';
 export default function FarmersPage() {
   const [farmers, setFarmers] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
+  const [search, setSearch] = React.useState('');
+  const [error, setError] = React.useState('');
 
   React.useEffect(() => {
     let mounted = true;
@@ -26,6 +28,7 @@ export default function FarmersPage() {
         }
       } catch (err) {
         console.error(err);
+        if (mounted) setError(err.message);
       }
       setLoading(false);
     }
@@ -33,27 +36,59 @@ export default function FarmersPage() {
     return () => { mounted = false; }
   }, []);
 
-  if (loading) return <p style={{padding: '1rem'}}>Loading...</p>;
+  const filtered = farmers.filter(f =>
+    f.name?.toLowerCase().includes(search.toLowerCase()) ||
+    f.farmer_code?.toLowerCase().includes(search.toLowerCase()) ||
+    f.village?.toLowerCase().includes(search.toLowerCase()) ||
+    f.contact_number?.includes(search)
+  );
+
+  if (loading) return <p style={{ padding: '1rem' }}>Loading...</p>;
 
   return (
-    <main style={{padding: '2rem', fontFamily: 'Arial, sans-serif'}}>
-      <h1>Farmers</h1>
-      <table border="1" cellPadding="8" style={{borderCollapse:'collapse'}}>
-        <thead>
-          <tr><th>Code</th><th>Name</th><th>Village</th><th>Contact</th><th>Created</th></tr>
-        </thead>
-        <tbody>
-          {farmers.map(f => (
-            <tr key={f.id}>
-              <td>{f.farmer_code}</td>
-              <td>{f.name}</td>
-              <td>{f.village}</td>
-              <td>{f.contact_number}</td>
-              <td>{new Date(f.created_at).toLocaleString()}</td>
+    <main style={{ padding: '2rem', fontFamily: 'Arial, sans-serif', maxWidth: '1200px', margin: 'auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <h1>Farmers</h1>
+        <a href="/farmers/add" style={{ textDecoration: 'none', backgroundColor: '#0070f3', color: 'white', padding: '0.5rem 1rem', borderRadius: '4px' }}>Add Farmer</a>
+      </div>
+
+      <input
+        type="text"
+        placeholder="Search by name, code, village, or contact..."
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem', border: '1px solid #ccc', borderRadius: '4px' }}
+      />
+
+      {error && <p style={{ color: 'red', marginBottom: '1rem' }}>{error}</p>}
+
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+          <thead>
+            <tr style={{ backgroundColor: '#f5f5f5' }}>
+              <th style={{ padding: '0.75rem', borderBottom: '1px solid #ddd', textAlign: 'left' }}>Code</th>
+              <th style={{ padding: '0.75rem', borderBottom: '1px solid #ddd', textAlign: 'left' }}>Name</th>
+              <th style={{ padding: '0.75rem', borderBottom: '1px solid #ddd', textAlign: 'left' }}>Village</th>
+              <th style={{ padding: '0.75rem', borderBottom: '1px solid #ddd', textAlign: 'left' }}>Contact</th>
+              <th style={{ padding: '0.75rem', borderBottom: '1px solid #ddd', textAlign: 'left' }}>Created</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {filtered.map(f => (
+              <tr key={f.id} style={{ borderBottom: '1px solid #eee' }}>
+                <td style={{ padding: '0.75rem' }}>{f.farmer_code}</td>
+                <td style={{ padding: '0.75rem' }}>{f.name}</td>
+                <td style={{ padding: '0.75rem' }}>{f.village}</td>
+                <td style={{ padding: '0.75rem' }}>{f.contact_number}</td>
+                <td style={{ padding: '0.75rem' }}>{new Date(f.created_at).toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {filtered.length === 0 && !error && (
+          <p style={{ textAlign: 'center', color: '#888', marginTop: '2rem' }}>No farmers found.</p>
+        )}
+      </div>
     </main>
   );
 }
