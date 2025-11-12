@@ -1,15 +1,49 @@
+import React from 'react';
 import Layout from '../components/Layout';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Link from 'next/link';
 
 export default function Home() {
-  const stats = [
+  const [stats, setStats] = React.useState([
     { label: 'Total Farmers', value: '0', icon: '👨‍🌾', color: '#3b82f6' },
     { label: 'Active Purchases', value: '0', icon: '🧾', color: '#10b981' },
     { label: 'Processing Lots', value: '0', icon: '📦', color: '#f59e0b' },
     { label: 'Completed Processes', value: '0', icon: '✅', color: '#8b5cf6' },
-  ];
+  ]);
+
+  React.useEffect(() => {
+    async function loadStats() {
+      try {
+        // Load farmers count
+        const farmersRes = await fetch('/api/farmers');
+        if (farmersRes.ok) {
+          const farmers = await farmersRes.json();
+          const farmerCount = farmers.length;
+          
+          // Load purchases count
+          const purchasesRes = await fetch('/api/purchases');
+          let purchaseCount = 0;
+          if (purchasesRes.ok) {
+            const purchases = await purchasesRes.json();
+            purchaseCount = purchases.length;
+          }
+
+          // Update stats with real data
+          setStats([
+            { label: 'Total Farmers', value: farmerCount.toString(), icon: '👨‍🌾', color: '#3b82f6' },
+            { label: 'Active Purchases', value: purchaseCount.toString(), icon: '🧾', color: '#10b981' },
+            { label: 'Processing Lots', value: '0', icon: '📦', color: '#f59e0b' },
+            { label: 'Completed Processes', value: '0', icon: '✅', color: '#8b5cf6' },
+          ]);
+        }
+      } catch (error) {
+        console.error('Error loading dashboard stats:', error);
+      }
+    }
+    
+    loadStats();
+  }, []);
 
   const quickActions = [
     { label: 'Add Farmer', href: '/farmers/add', icon: '👨‍🌾', color: '#3b82f6' },

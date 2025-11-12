@@ -45,13 +45,25 @@ CREATE TABLE IF NOT EXISTS purchases (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
+-- lots table
+CREATE TABLE IF NOT EXISTS lots (
+  id SERIAL PRIMARY KEY,
+  lot_code VARCHAR(20) UNIQUE NOT NULL,
+  lot_date DATE NOT NULL,
+  total_input_weight DECIMAL(10,2) DEFAULT 0,
+  remarks TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
 -- Enable RLS
 ALTER TABLE farmers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE purchases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lots ENABLE ROW LEVEL SECURITY;
 
 -- Create policies
 CREATE POLICY "Allow all operations on farmers" ON farmers FOR ALL USING (true);
 CREATE POLICY "Allow all operations on purchases" ON purchases FOR ALL USING (true);
+CREATE POLICY "Allow all operations on lots" ON lots FOR ALL USING (true);
 
 -- Insert sample data
 INSERT INTO farmers (farmer_code, name, village, contact_number, efficacy_score) VALUES
