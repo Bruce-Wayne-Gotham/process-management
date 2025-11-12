@@ -9,14 +9,23 @@ export default function FarmersPage() {
   React.useEffect(() => {
     let mounted = true;
     async function load() {
-      const { data, error } = await supabase
-        .from('farmers')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (error) {
-        console.error(error);
-      } else if (mounted) {
-        setFarmers(data || []);
+      try {
+        const apiBase = process.env.NEXT_PUBLIC_API_URL;
+        if (apiBase) {
+          const res = await fetch(`${apiBase}/farmers`);
+          if (!res.ok) throw new Error(`API error ${res.status}`);
+          const rows = await res.json();
+          if (mounted) setFarmers(rows || []);
+        } else {
+          const { data, error } = await supabase
+            .from('farmers')
+            .select('*')
+            .order('created_at', { ascending: false });
+          if (error) throw error;
+          if (mounted) setFarmers(data || []);
+        }
+      } catch (err) {
+        console.error(err);
       }
       setLoading(false);
     }
@@ -48,3 +57,4 @@ export default function FarmersPage() {
     </main>
   );
 }
+
