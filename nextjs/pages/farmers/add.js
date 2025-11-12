@@ -32,16 +32,13 @@ export default function AddFarmerPage() {
     setLoading(true);
     setError('');
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL;
-      if (!apiBase) throw new Error('NEXT_PUBLIC_API_URL not configured');
-
       const payload = { ...form };
       // Convert empty strings to null for optional fields
       Object.keys(payload).forEach(k => {
         if (payload[k] === '') payload[k] = null;
       });
 
-      const res = await fetch(`${apiBase}/farmers`, {
+      const res = await fetch('/api/farmers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

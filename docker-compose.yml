@@ -5,24 +5,14 @@ services:
       args:
         NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-        NEXT_PUBLIC_API_URL: http://localhost:3001
+        SUPABASE_URL: ${SUPABASE_URL}
+        SUPABASE_KEY: ${SUPABASE_KEY}
     ports:
       - "3000:3000"
     env_file:
       - ./nextjs/.env.local
     environment:
       NODE_ENV: production
-    depends_on:
-      - api
-    restart: unless-stopped
-
-  api:
-    build:
-      context: ./api
-    ports:
-      - "3001:3001"
-    environment:
-      PORT: 3001
-      SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-      SUPABASE_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_KEY: ${SUPABASE_KEY}
     restart: unless-stopped

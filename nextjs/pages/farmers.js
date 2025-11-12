@@ -1,6 +1,5 @@
 'use client';
 import React from 'react';
-import { supabase } from '../lib/supabaseClient';
 
 export default function FarmersPage() {
   const [farmers, setFarmers] = React.useState([]);
@@ -12,20 +11,10 @@ export default function FarmersPage() {
     let mounted = true;
     async function load() {
       try {
-        const apiBase = process.env.NEXT_PUBLIC_API_URL;
-        if (apiBase) {
-          const res = await fetch(`${apiBase}/farmers`);
-          if (!res.ok) throw new Error(`API error ${res.status}`);
-          const rows = await res.json();
-          if (mounted) setFarmers(rows || []);
-        } else {
-          const { data, error } = await supabase
-            .from('farmers')
-            .select('*')
-            .order('created_at', { ascending: false });
-          if (error) throw error;
-          if (mounted) setFarmers(data || []);
-        }
+        const res = await fetch('/api/farmers');
+        if (!res.ok) throw new Error(`API error ${res.status}`);
+        const rows = await res.json();
+        if (mounted) setFarmers(rows || []);
       } catch (err) {
         console.error(err);
         if (mounted) setError(err.message);
