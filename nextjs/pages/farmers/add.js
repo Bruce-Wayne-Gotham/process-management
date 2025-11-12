@@ -1,6 +1,9 @@
 'use client';
 import React from 'react';
 import { useRouter } from 'next/router';
+import Layout from '../../components/Layout';
+import Card from '../../components/Card';
+import Button from '../../components/Button';
 
 export default function AddFarmerPage() {
   const router = useRouter();
@@ -55,14 +58,42 @@ export default function AddFarmerPage() {
     }
   };
 
-  const fieldStyle = { display: 'flex', flexDirection: 'column', marginBottom: '1rem' };
-  const labelStyle = { marginBottom: '0.25rem', fontWeight: 'bold' };
-  const inputStyle = { padding: '0.5rem', border: '1px solid #ccc', borderRadius: '4px' };
+  const fieldStyle = { 
+    display: 'flex', 
+    flexDirection: 'column', 
+    marginBottom: '1.5rem' 
+  };
+  
+  const labelStyle = { 
+    marginBottom: '0.5rem', 
+    fontWeight: '600', 
+    color: '#374151',
+    fontSize: '0.9rem'
+  };
+  
+  const inputStyle = { 
+    padding: '0.75rem', 
+    border: '1px solid #d1d5db', 
+    borderRadius: '0.5rem',
+    fontSize: '1rem',
+    backgroundColor: '#f9fafb',
+    transition: 'border-color 0.2s'
+  };
 
   return (
-    <main style={{ padding: '2rem', fontFamily: 'Arial, sans-serif', maxWidth: '700px', margin: 'auto' }}>
-      <h1>Add Farmer</h1>
-      <form onSubmit={handleSubmit}>
+    <Layout>
+      <Card 
+        title="Add New Farmer"
+        actions={
+          <Button 
+            variant="secondary" 
+            onClick={() => router.push('/farmers')}
+          >
+            ← Back to Farmers
+          </Button>
+        }
+      >
+        <form onSubmit={handleSubmit}>
         <div style={fieldStyle}>
           <label style={labelStyle}>Farmer Code *</label>
           <input name="farmer_code" value={form.farmer_code} onChange={handleChange} required style={inputStyle} />
@@ -120,17 +151,33 @@ export default function AddFarmerPage() {
           <textarea name="efficacy_notes" value={form.efficacy_notes} onChange={handleChange} rows={3} style={inputStyle} />
         </div>
 
-        {error && <p style={{ color: 'red', marginBottom: '1rem' }}>{error}</p>}
+          {error && (
+            <div style={{
+              padding: '1rem',
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: '0.5rem',
+              color: '#dc2626',
+              marginBottom: '1.5rem'
+            }}>
+              <strong>Error:</strong> {error}
+            </div>
+          )}
 
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <button type="submit" disabled={loading} style={{ padding: '0.75rem 1.5rem', backgroundColor: '#0070f3', color: 'white', border: 'none', borderRadius: '4px', cursor: loading ? 'not-allowed' : 'pointer' }}>
-            {loading ? 'Saving...' : 'Save'}
-          </button>
-          <button type="button" onClick={() => router.push('/farmers')} style={{ padding: '0.75rem 1.5rem', backgroundColor: '#ccc', color: '#333', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-            Cancel
-          </button>
-        </div>
-      </form>
-    </main>
+          <div style={{ display: 'flex', gap: '1rem', paddingTop: '1rem' }}>
+            <Button type="submit" disabled={loading} variant="primary">
+              {loading ? '⏳ Saving...' : '💾 Save Farmer'}
+            </Button>
+            <Button 
+              type="button" 
+              variant="secondary" 
+              onClick={() => router.push('/farmers')}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </Card>
+    </Layout>
   );
 }
