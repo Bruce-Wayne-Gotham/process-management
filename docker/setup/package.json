@@ -1,0 +1,16 @@
+{
+  "name": "tobacco-tracker-db-setup",
+  "version": "1.0.0",
+  "description": "Containerized database setup for Tobacco Tracker",
+  "main": "setup-database.js",
+  "scripts": {
+    "setup": "node setup-database.js",
+    "verify": "node verify-database.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.0",
+    "dotenv": "^16.3.1"
+  },
+  "author": "Tobacco Tracker Team",
+  "license": "MIT"
+}

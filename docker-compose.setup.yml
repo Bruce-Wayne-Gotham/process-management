@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  tobacco-tracker-setup:
+    build:
+      context: ./docker/setup
+      dockerfile: Dockerfile
+    environment:
+      - SUPABASE_URL=https://wueblvkoukloirisuoju.supabase.co
+      - SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1ZWJsdmtvdWtsb2lyaXN1b2p1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjA3NTE1OSwiZXhwIjoyMDc3NjUxMTU5fQ.XuqvDELaakUVQbx-7uF4E7B7loaiQ7BZ-Tfmh7ogw9M
+    container_name: tobacco-tracker-db-setup
+    restart: "no"
+    
+  # Optional: Verification service
+  tobacco-tracker-verify:
+    build:
+      context: ./docker/setup
+      dockerfile: Dockerfile
+    environment:
+      - SUPABASE_URL=https://wueblvkoukloirisuoju.supabase.co
+      - SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1ZWJsdmtvdWtsb2lyaXN1b2p1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjA3NTE1OSwiZXhwIjoyMDc3NjUxMTU5fQ.XuqvDELaakUVQbx-7uF4E7B7loaiQ7BZ-Tfmh7ogw9M
+    container_name: tobacco-tracker-db-verify
+    restart: "no"
+    command: ["node", "verify-database.js"]
+    profiles:
+      - verify

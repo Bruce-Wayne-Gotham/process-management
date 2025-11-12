@@ -1,0 +1,17 @@
+{
+  "name": "tobacco-tracker-render-setup",
+  "version": "1.0.0",
+  "description": "Render-based database setup for Tobacco Tracker",
+  "main": "setup-database.js",
+  "scripts": {
+    "start": "node setup-database.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "Tobacco Tracker Team",
+  "license": "MIT"
+}

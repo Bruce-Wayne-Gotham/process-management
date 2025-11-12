@@ -1,0 +1,15 @@
+{
+  "name": "tobacco-tracker-setup",
+  "version": "1.0.0",
+  "description": "Database setup scripts for Tobacco Tracker",
+  "main": "setup-database.js",
+  "scripts": {
+    "setup": "node setup-database.js",
+    "verify": "node verify-database.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.0"
+  },
+  "author": "Tobacco Tracker Team",
+  "license": "MIT"
+}
