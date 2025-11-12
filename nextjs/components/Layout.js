@@ -12,6 +12,7 @@ export default function Layout({ children }) {
     { href: '/process', label: 'Process', icon: '⚙️' },
     { href: '/jardi', label: 'Jardi Output', icon: '🍂' },
     { href: '/payments', label: 'Payments', icon: '💰' },
+    { href: '/manual-setup', label: 'Setup Database', icon: '🛠️' }
   ];
 
   const isActive = (href) => {

@@ -66,46 +66,25 @@ export default function Home() {
 
       {/* Quick Actions */}
       <Card title="Quick Actions">
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-          gap: '1rem' 
-        }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
+          <Link href="/manual-setup" style={{ textDecoration: 'none' }}>
+            <Card style={{ cursor: 'pointer', transition: 'transform 0.2s', ':hover': { transform: 'translateY(-2px)' }, border: '2px solid #f59e0b' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🛠️</div>
+                <h3 style={{ margin: '0 0 0.5rem 0', color: '#d97706' }}>Setup Database</h3>
+                <p style={{ margin: 0, color: '#92400e', fontSize: '0.9rem', fontWeight: '500' }}>Required first step!</p>
+              </div>
+            </Card>
+          </Link>
           {quickActions.map((action, index) => (
             <Link key={index} href={action.href} style={{ textDecoration: 'none' }}>
-              <div style={{
-                padding: '1.5rem',
-                borderRadius: '0.5rem',
-                border: '1px solid #e2e8f0',
-                backgroundColor: '#f8fafc',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                textAlign: 'center'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = '#f1f5f9';
-                e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = '#f8fafc';
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = 'none';
-              }}>
-                <div style={{
-                  fontSize: '2rem',
-                  marginBottom: '0.5rem'
-                }}>
-                  {action.icon}
+              <Card style={{ cursor: 'pointer', transition: 'transform 0.2s', ':hover': { transform: 'translateY(-2px)' } }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>{action.icon}</div>
+                  <h3 style={{ margin: '0 0 0.5rem 0', color: '#1e293b' }}>{action.label}</h3>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>{action.label === 'Add Farmer' ? 'Register a new farmer' : action.label === 'Record Purchase' ? 'Add tobacco purchase' : action.label === 'Create Lot' ? 'Group purchases into lots' : 'View reports'}</p>
                 </div>
-                <div style={{
-                  fontSize: '1rem',
-                  fontWeight: '500',
-                  color: '#1e293b'
-                }}>
-                  {action.label}
-                </div>
-              </div>
+              </Card>
             </Link>
           ))}
         </div>
