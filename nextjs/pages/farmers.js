@@ -15,15 +15,23 @@ export default function FarmersPage() {
     let mounted = true;
     async function load() {
       try {
+        console.log('Loading farmers...');
         const res = await fetch('/api/farmers');
+        console.log('Farmers API response:', res.status);
         if (!res.ok) throw new Error(`API error ${res.status}`);
         const rows = await res.json();
-        if (mounted) setFarmers(rows || []);
+        console.log('Farmers data:', rows);
+        if (mounted) {
+          setFarmers(rows || []);
+          setLoading(false);
+        }
       } catch (err) {
-        console.error(err);
-        if (mounted) setError(err.message);
+        console.error('Farmers loading error:', err);
+        if (mounted) {
+          setError(err.message);
+          setLoading(false);
+        }
       }
-      setLoading(false);
     }
     load();
     return () => { mounted = false; }

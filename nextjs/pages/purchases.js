@@ -15,15 +15,23 @@ export default function PurchasesPage() {
     let mounted = true;
     async function load() {
       try {
+        console.log('Loading purchases...');
         const res = await fetch('/api/purchases');
+        console.log('Purchases API response:', res.status);
         if (!res.ok) throw new Error(`API error ${res.status}`);
         const rows = await res.json();
-        if (mounted) setPurchases(rows || []);
+        console.log('Purchases data:', rows);
+        if (mounted) {
+          setPurchases(rows || []);
+          setLoading(false);
+        }
       } catch (err) {
-        console.error(err);
-        if (mounted) setError(err.message);
+        console.error('Purchases loading error:', err);
+        if (mounted) {
+          setError(err.message);
+          setLoading(false);
+        }
       }
-      setLoading(false);
     }
     load();
     return () => { mounted = false; }
