@@ -1,0 +1,56 @@
+{
+  "cursor": "pMcALJqhtRRncTdnaTI3YzczOXQ5MWkw",
+  "service": {
+    "autoDeploy": "yes",
+    "autoDeployTrigger": "commit",
+    "branch": "main",
+    "createdAt": "2025-11-12T12:07:05.723497Z",
+    "dashboardUrl": "https://dashboard.render.com/web/srv-d4a7gq7gi27c739t91i0",
+    "environmentId": "evm-d4a7fjqdbo4c73c6jrag",
+    "id": "srv-d4a7gq7gi27c739t91i0",
+    "name": "process-management",
+    "notifyOnFail": "default",
+    "ownerId": "tea-d1aaq9re5dus73edqkrg",
+    "repo": "https://github.com/Bruce-Wayne-Gotham/process-management",
+    "rootDir": "",
+    "serviceDetails": {
+      "buildPlan": "starter",
+      "cache": {
+        "profile": "no-cache"
+      },
+      "env": "docker",
+      "envSpecificDetails": {
+        "dockerCommand": "",
+        "dockerContext": ".",
+        "dockerfilePath": "nextjs/Dockerfile"
+      },
+      "healthCheckPath": "",
+      "ipAllowList": [
+        {
+          "cidrBlock": "0.0.0.0/0",
+          "description": "everywhere"
+        }
+      ],
+      "maintenanceMode": {
+        "enabled": false,
+        "uri": ""
+      },
+      "numInstances": 1,
+      "openPorts": null,
+      "plan": "free",
+      "previews": {
+        "generation": "off"
+      },
+      "pullRequestPreviewsEnabled": "no",
+      "region": "oregon",
+      "runtime": "docker",
+      "sshAddress": "srv-d4a7gq7gi27c739t91i0@ssh.oregon.render.com",
+      "url": "https://process-management-4t4o.onrender.com"
+    },
+    "slug": "process-management-4t4o",
+    "suspended": "not_suspended",
+    "suspenders": [],
+    "type": "web_service",
+    "updatedAt": "2025-11-12T16:24:20.848309Z"
+  }
+}

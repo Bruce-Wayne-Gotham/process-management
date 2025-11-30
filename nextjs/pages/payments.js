@@ -3,12 +3,15 @@ import Layout from '../components/Layout';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 
 export default function PaymentsPage() {
+  const router = useRouter();
   const [payments, setPayments] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState('');
   const [error, setError] = React.useState('');
+  const [showSuccess, setShowSuccess] = React.useState(false);
 
   React.useEffect(() => {
     let mounted = true;
@@ -35,6 +38,14 @@ export default function PaymentsPage() {
     load();
     return () => { mounted = false; }
   }, []);
+
+  React.useEffect(() => {
+    if (!router.isReady) return;
+    if (router.query.created === '1') {
+      setShowSuccess(true);
+      router.replace('/payments', undefined, { shallow: true });
+    }
+  }, [router]);
 
   const filtered = payments.filter(payment =>
     payment.purchases?.farmers?.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -82,6 +93,20 @@ export default function PaymentsPage() {
           Track and manage farmer payments and transactions
         </p>
       </div>
+
+      {showSuccess && (
+        <Card style={{ marginBottom: '2rem', border: '1px solid #bbf7d0', backgroundColor: '#f0fdf4' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: '#166534' }}>
+            <span style={{ fontSize: '1.5rem' }}>✅</span>
+            <div>
+              <h3 style={{ margin: 0, color: '#166534' }}>Payment recorded successfully</h3>
+              <p style={{ margin: '0.25rem 0 0 0', color: '#166534', fontSize: '0.9rem' }}>
+                The new payment is now listed below. You can add another payment anytime.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Summary Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>

@@ -46,10 +46,34 @@ export default function Home() {
   }, []);
 
   const quickActions = [
-    { label: 'Add Farmer', href: '/farmers/add', icon: '👨‍🌾', color: '#3b82f6' },
-    { label: 'Record Purchase', href: '/purchases/add', icon: '🧾', color: '#10b981' },
-    { label: 'Create Lot', href: '/lots/add', icon: '📦', color: '#f59e0b' },
-    { label: 'View Reports', href: '/reports', icon: '📊', color: '#8b5cf6' },
+    {
+      label: 'Add Farmer',
+      description: 'Register a new farmer',
+      href: '/farmers/add',
+      icon: '👨‍🌾',
+      color: '#3b82f6'
+    },
+    {
+      label: 'Record Purchase',
+      description: 'Add tobacco purchase',
+      href: '/purchases/add',
+      icon: '🧾',
+      color: '#10b981'
+    },
+    {
+      label: 'Record Payment',
+      description: 'Log a payout to a farmer',
+      href: '/payments/add',
+      icon: '💰',
+      color: '#8b5cf6'
+    },
+    {
+      label: 'Create Lot',
+      description: 'Group purchases into lots',
+      href: '/lots/add',
+      icon: '📦',
+      color: '#f59e0b'
+    }
   ];
 
   return (
@@ -116,7 +140,7 @@ export default function Home() {
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>{action.icon}</div>
                   <h3 style={{ margin: '0 0 0.5rem 0', color: '#1e293b' }}>{action.label}</h3>
-                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>{action.label === 'Add Farmer' ? 'Register a new farmer' : action.label === 'Record Purchase' ? 'Add tobacco purchase' : action.label === 'Create Lot' ? 'Group purchases into lots' : 'View reports'}</p>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>{action.description}</p>
                 </div>
               </Card>
             </Link>
