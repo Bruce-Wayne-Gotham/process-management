@@ -5,7 +5,7 @@
 
 FROM node:18-alpine AS deps
 WORKDIR /app
-COPY package*.json ./
+COPY nextjs/package*.json ./
 # Prefer npm ci if lockfile exists; fallback to npm install
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
@@ -21,7 +21,7 @@ ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV SUPABASE_URL=$SUPABASE_URL
 ENV SUPABASE_KEY=$SUPABASE_KEY
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY nextjs/. .
 RUN npm run build
 
 FROM node:18-alpine AS runner
