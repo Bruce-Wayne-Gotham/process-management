@@ -255,9 +255,14 @@ export default function PaymentsPage() {
                       {payment.remarks || '-'}
                     </td>
                     <td style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>
-                      <Button variant="outline" size="sm">
-                        👁️ View
-                      </Button>
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                        <Button variant="outline" size="sm" onClick={() => window.location.href = `/payments/${payment.id}`}>
+                          👁️ View
+                        </Button>
+                        <Button variant="primary" size="sm" onClick={() => window.location.href = `/payments/${payment.id}/edit`}>
+                          ✏️ Edit
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}

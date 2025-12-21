@@ -1,0 +1,7 @@
+Complex test with JSON-like structure:
+{
+  "key": "value",
+  "nested": {
+    "array": [1, 2, 3]
+  }
+}

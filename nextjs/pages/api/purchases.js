@@ -46,13 +46,10 @@ export default async function handler(req, res) {
       });
     }
 
-    // Calculate computed fields
+    // Parse numeric fields
     const processWeightNum = Number(process_weight);
     const packagingWeightNum = Number(packaging_weight) || 0;
     const ratePerKgNum = Number(rate_per_kg);
-    
-    const totalWeight = processWeightNum + packagingWeightNum;
-    const totalAmount = processWeightNum * ratePerKgNum;
 
     const { data, error } = await supabase
       .from('purchases')
@@ -62,9 +59,7 @@ export default async function handler(req, res) {
         packaging_type,
         process_weight: processWeightNum,
         packaging_weight: packagingWeightNum,
-        total_weight: totalWeight,
         rate_per_kg: ratePerKgNum,
-        total_amount: totalAmount,
         remarks: remarks || null
       })
       .select(`

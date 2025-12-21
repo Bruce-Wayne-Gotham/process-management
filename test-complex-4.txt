@@ -1,0 +1,19 @@
+Complex test with React JSX:
+import React from 'react';
+
+export default function Component() {
+  const [state, setState] = React.useState({
+    "key": "value with 'quotes'",
+    "nested": {
+      "array": [1, 2, 3],
+      "string": "test \n with \t escapes"
+    }
+  });
+  
+  return (
+    <div className="test-component" style={{ "color": "red" }}>
+      <h1>Test Header</h1>
+      <p>Content with "quotes" and 'apostrophes'</p>
+    </div>
+  );
+}

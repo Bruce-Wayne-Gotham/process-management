@@ -37,9 +37,9 @@ export default function Button({
   };
 
   const sizes = {
-    sm: { padding: '0.5rem 0.75rem', fontSize: '0.875rem' },
-    md: { padding: '0.75rem 1rem', fontSize: '0.9rem' },
-    lg: { padding: '1rem 1.5rem', fontSize: '1rem' }
+    sm: { padding: 'clamp(0.4rem, 2vw, 0.5rem) clamp(0.6rem, 3vw, 0.75rem)', fontSize: 'clamp(0.75rem, 2vw, 0.875rem)' },
+    md: { padding: 'clamp(0.6rem, 2vw, 0.75rem) clamp(0.8rem, 3vw, 1rem)', fontSize: 'clamp(0.8rem, 2vw, 0.9rem)' },
+    lg: { padding: 'clamp(0.8rem, 2vw, 1rem) clamp(1.2rem, 3vw, 1.5rem)', fontSize: 'clamp(0.9rem, 2vw, 1rem)' }
   };
 
   return (
@@ -59,6 +59,11 @@ export default function Button({
         alignItems: 'center',
         justifyContent: 'center',
         gap: '0.5rem',
+        whiteSpace: 'nowrap',
+        wordBreak: 'keep-all',
+        minWidth: 'fit-content',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
         ...props.style
       }}
       onMouseEnter={(e) => {

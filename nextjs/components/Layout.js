@@ -26,27 +26,54 @@ export default function Layout({ children }) {
       <header style={{
         backgroundColor: '#1e293b',
         color: 'white',
-        padding: '1rem 2rem',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        padding: '1rem',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100
       }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 'bold' }}>
-            🚬 Tobacco Tracker
-          </h1>
-          <div style={{ fontSize: '0.9rem', opacity: 0.8 }}>
-            Process Management System
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <h1 style={{ margin: 0, fontSize: 'clamp(1.2rem, 4vw, 1.5rem)', fontWeight: 'bold' }}>
+              🚬 Tobacco Tracker
+            </h1>
+            <div style={{ fontSize: 'clamp(0.8rem, 2vw, 0.9rem)', opacity: 0.8 }}>
+              Process Management System
+            </div>
           </div>
+          {/* Mobile menu button */}
+          <button 
+            onClick={() => {
+              const nav = document.getElementById('mobile-nav');
+              nav.style.display = nav.style.display === 'flex' ? 'none' : 'flex';
+            }}
+            style={{
+              display: 'none',
+              background: 'none',
+              border: 'none',
+              color: 'white',
+              fontSize: '1.5rem',
+              cursor: 'pointer',
+              padding: '0.5rem'
+            }}
+          >
+            ☰
+          </button>
         </div>
       </header>
 
-      <div style={{ display: 'flex', maxWidth: '1200px', margin: '0 auto' }}>
+      <div style={{ display: 'flex', maxWidth: '1200px', margin: '0 auto', flexDirection: 'row' }}>
         {/* Sidebar Navigation */}
-        <nav style={{
+        <nav id="mobile-nav" style={{
           width: '250px',
           backgroundColor: 'white',
           minHeight: 'calc(100vh - 80px)',
           borderRight: '1px solid #e2e8f0',
-          padding: '1.5rem 0'
+          padding: '1.5rem 0',
+          position: 'sticky',
+          top: '80px',
+          height: 'calc(100vh - 80px)',
+          overflowY: 'auto'
         }}>
           <div style={{ padding: '0 1rem', marginBottom: '1rem' }}>
             <h3 style={{ margin: 0, fontSize: '0.9rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -90,12 +117,62 @@ export default function Layout({ children }) {
         {/* Main Content */}
         <main style={{
           flex: 1,
-          padding: '2rem',
-          backgroundColor: '#f8fafc'
+          padding: '1rem',
+          backgroundColor: '#f8fafc',
+          overflowX: 'auto'
         }}>
           {children}
         </main>
       </div>
+
+      {/* Mobile Responsive Styles */}
+      <style jsx>{`
+        @media (max-width: 768px) {
+          header button {
+            display: block !important;
+          }
+          
+          #mobile-nav {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100vh !important;
+            z-index: 200 !important;
+            display: none !important;
+            background-color: white !important;
+            border-right: none !important;
+          }
+          
+          #mobile-nav.show {
+            display: flex !important;
+          }
+          
+          main {
+            padding: 1rem !important;
+          }
+          
+          div[style*="flex-direction: row"] {
+            flex-direction: column !important;
+          }
+        }
+        
+        @media (max-width: 1024px) {
+          nav {
+            width: 200px !important;
+          }
+        }
+        
+        @media (max-width: 640px) {
+          header {
+            padding: 0.75rem !important;
+          }
+          
+          main {
+            padding: 0.75rem !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

@@ -156,29 +156,29 @@ export default function ProcessPage() {
             </Link>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f8fafc' }}>
-                  <th style={{ padding: '1rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', fontWeight: '600', color: '#374151' }}>
+          <div style={{ overflowX: 'auto', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
+              <thead style={{ backgroundColor: '#f8fafc' }}>
+                <tr>
+                  <th style={{ padding: 'clamp(0.75rem, 2vw, 1rem)', textAlign: 'left', borderBottom: '1px solid #e2e8f0', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>
                     Process Code
                   </th>
-                  <th style={{ padding: '1rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', fontWeight: '600', color: '#374151' }}>
-                    Lot
+                  <th style={{ padding: 'clamp(0.75rem, 2vw, 1rem)', textAlign: 'left', borderBottom: '1px solid #e2e8f0', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>
+                    Lot Code
                   </th>
-                  <th style={{ padding: '1rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', fontWeight: '600', color: '#374151' }}>
+                  <th style={{ padding: 'clamp(0.75rem, 2vw, 1rem)', textAlign: 'left', borderBottom: '1px solid #e2e8f0', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>
                     Date
                   </th>
-                  <th style={{ padding: '1rem', textAlign: 'right', borderBottom: '1px solid #e2e8f0', fontWeight: '600', color: '#374151' }}>
+                  <th style={{ padding: 'clamp(0.75rem, 2vw, 1rem)', textAlign: 'right', borderBottom: '1px solid #e2e8f0', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>
                     Input (kg)
                   </th>
-                  <th style={{ padding: '1rem', textAlign: 'right', borderBottom: '1px solid #e2e8f0', fontWeight: '600', color: '#374151' }}>
+                  <th style={{ padding: 'clamp(0.75rem, 2vw, 1rem)', textAlign: 'right', borderBottom: '1px solid #e2e8f0', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>
                     Wastage (kg)
                   </th>
-                  <th style={{ padding: '1rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', fontWeight: '600', color: '#374151' }}>
+                  <th style={{ padding: 'clamp(0.75rem, 2vw, 1rem)', textAlign: 'center', borderBottom: '1px solid #e2e8f0', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>
                     Status
                   </th>
-                  <th style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0', fontWeight: '600', color: '#374151' }}>
+                  <th style={{ padding: 'clamp(0.75rem, 2vw, 1rem)', textAlign: 'center', borderBottom: '1px solid #e2e8f0', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>
                     Actions
                   </th>
                 </tr>
@@ -220,9 +220,16 @@ export default function ProcessPage() {
                       </span>
                     </td>
                     <td style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>
-                      <Button variant="outline" size="sm">
-                        👁️ View
-                      </Button>
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                        <Button variant="outline" size="sm" onClick={() => window.location.href = `/process/${process.id}`}>
+                          👁️ View
+                        </Button>
+                        {process.process_status?.status_code !== 'COMPLETED' && (
+                          <Button variant="primary" size="sm" onClick={() => window.location.href = `/process/${process.id}/edit`}>
+                            ✏️ Edit
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
