@@ -1,72 +1,106 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { query } from '../../lib/db';
 
 export default async function handler(req, res) {
-  if (req.method === 'GET') {
-    const { data, error } = await supabase
-      .from('farmers')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) return res.status(500).json({ error: error.message });
-    return res.status(200).json(data || []);
-  }
-
-  if (req.method === 'POST') {
-    const {
-      farmer_code,
-      name,
-      village,
-      contact_number,
-      aadhaar_no,
-      dob,
-      account_holder_name,
-      bank_name,
-      branch_name,
-      account_number,
-      ifsc_code,
-      upi_id,
-      efficacy_score,
-      efficacy_notes
-    } = req.body;
-
-    if (!farmer_code || !name) {
-      return res.status(400).json({ error: 'farmer_code and name are required' });
+  try {
+    console.log('[farmers.js] Incoming request:', { method: req.method, url: req.url });
+    
+    if (req.method === 'GET') {
+      console.log('[farmers.js] Processing GET request...');
+      try {
+        const result = await query('SELECT * FROM farmers ORDER BY created_at DESC');
+        console.log('[farmers.js] Query successful, rows:', result.rows?.length || 0);
+        return res.status(200).json(result.rows || []);
+      } catch (dbError) {
+        console.error('[farmers.js] Database query failed:', {
+          message: dbError.message,
+          code: dbError.code,
+          detail: dbError.detail,
+          stack: dbError.stack
+        });
+        throw dbError;
+      }
     }
 
-    const { data, error } = await supabase
-      .from('farmers')
-      .insert({
+    if (req.method === 'POST') {
+      const {
         farmer_code,
         name,
-        village: village || null,
-        contact_number: contact_number || null,
-        aadhaar_no: aadhaar_no || null,
-        dob: dob || null,
-        account_holder_name: account_holder_name || null,
-        bank_name: bank_name || null,
-        branch_name: branch_name || null,
-        account_number: account_number || null,
-        ifsc_code: ifsc_code || null,
-        upi_id: upi_id || null,
-        efficacy_score: efficacy_score ? Number(efficacy_score) : null,
-        efficacy_notes: efficacy_notes || null
-      })
-      .select()
-      .single();
+        village,
+        contact_number,
+        aadhaar_no,
+        dob,
+        account_holder_name,
+        bank_name,
+        branch_name,
+        account_number,
+        ifsc_code,
+        upi_id,
+        efficacy_score,
+        efficacy_notes
+      } = req.body;
 
-    if (error) {
-      if (error.code === '23505') {
-        return res.status(409).json({ error: 'farmer_code already exists' });
+      if (!farmer_code || !name) {
+        return res.status(400).json({ error: 'farmer_code and name are required' });
       }
-      return res.status(500).json({ error: error.message });
+
+      const insertSql = `
+        INSERT INTO farmers (
+          farmer_code, name, village, contact_number, aadhaar_no, dob,
+          account_holder_name, bank_name, branch_name, account_number,
+          ifsc_code, upi_id, efficacy_score, efficacy_notes
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6,
+          $7, $8, $9, $10,
+          $11, $12, $13, $14
+        )
+        RETURNING *
+      `;
+
+      const values = [
+        farmer_code,
+        name,
+        village || null,
+        contact_number || null,
+        aadhaar_no || null,
+        dob || null,
+        account_holder_name || null,
+        bank_name || null,
+        branch_name || null,
+        account_number || null,
+        ifsc_code || null,
+        upi_id || null,
+        efficacy_score !== undefined && efficacy_score !== null && efficacy_score !== '' ? Number(efficacy_score) : null,
+        efficacy_notes || null
+      ];
+
+      const result = await query(insertSql, values);
+      return res.status(201).json(result.rows?.[0]);
     }
 
-    return res.status(201).json(data);
+    res.setHeader('Allow', ['GET', 'POST']);
+    return res.status(405).end(`Method ${req.method} Not Allowed`);
+  } catch (err) {
+    console.error('[farmers.js] API error caught:', {
+      message: err?.message,
+      code: err?.code,
+      detail: err?.detail,
+      stack: err?.stack,
+      environment: {
+        nodeEnv: process.env.NODE_ENV,
+        hasDatabaseUrl: !!process.env.DATABASE_URL
+      }
+    });
+    
+    if (err && err.code === '23505') {
+      return res.status(409).json({ error: 'farmer_code already exists' });
+    }
+    
+    return res.status(500).json({ 
+      error: err?.message || 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? {
+        code: err?.code,
+        detail: err?.detail
+      } : undefined
+    });
   }
-
-  res.setHeader('Allow', ['GET', 'POST']);
-  res.status(405).end(`Method ${req.method} Not Allowed`);
 }

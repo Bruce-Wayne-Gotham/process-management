@@ -93,6 +93,11 @@ export default function FarmersPage() {
             marginBottom: '1.5rem'
           }}>
             <strong>Error:</strong> {error}
+            <div style={{ marginTop: '0.5rem', color: '#b91c1c', fontSize: '0.95rem' }}>
+              Ensure Supabase is set up and env vars are present. Run the SQL from{' '}
+              <a href="/manual-setup" style={{ color: '#991b1b', textDecoration: 'underline' }}>Manual Setup</a>{' '}
+              or open <a href="/SUPABASE_SETUP.md" target="_blank" style={{ color: '#991b1b', textDecoration: 'underline' }}>SUPABASE_SETUP.md</a>.
+            </div>
           </div>
         )}
 

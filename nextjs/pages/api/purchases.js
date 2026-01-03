@@ -1,84 +1,105 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { query } from '../../lib/db';
 
 export default async function handler(req, res) {
-  if (req.method === 'GET') {
-    const { data, error } = await supabase
-      .from('purchases')
-      .select(`
-        *,
-        farmers (
-          farmer_code,
-          name,
-          village
-        )
-      `)
-      .order('purchase_date', { ascending: false });
-    
-    if (error) return res.status(500).json({ error: error.message });
-    return res.status(200).json(data || []);
+
+  function normalizePurchaseRow(row) {
+    return {
+      ...row,
+      farmer_id: row.farmer_id !== null ? Number(row.farmer_id) : null,
+      process_weight: row.process_weight !== null ? Number(row.process_weight) : null,
+      packaging_weight: row.packaging_weight !== null ? Number(row.packaging_weight) : null,
+      total_weight: row.total_weight !== null ? Number(row.total_weight) : null,
+      rate_per_kg: row.rate_per_kg !== null ? Number(row.rate_per_kg) : null,
+      total_amount: row.total_amount !== null ? Number(row.total_amount) : null,
+      farmers: row.farmers || null
+    };
   }
 
-  if (req.method === 'POST') {
-    const {
-      farmer_id,
-      purchase_date,
-      packaging_type,
-      process_weight,
-      packaging_weight,
-      rate_per_kg,
-      remarks
-    } = req.body;
-
-    // Validation
-    if (!farmer_id || !purchase_date || !packaging_type || !process_weight || !rate_per_kg) {
-      return res.status(400).json({ 
-        error: 'farmer_id, purchase_date, packaging_type, process_weight, and rate_per_kg are required' 
-      });
+  try {
+    if (req.method === 'GET') {
+      const sql = `
+        SELECT
+          p.*, 
+          json_build_object(
+            'farmer_code', f.farmer_code,
+            'name', f.name,
+            'village', f.village
+          ) AS farmers
+        FROM purchases p
+        LEFT JOIN farmers f ON f.id = p.farmer_id
+        ORDER BY p.purchase_date DESC, p.created_at DESC
+      `;
+      const result = await query(sql);
+      return res.status(200).json((result.rows || []).map(normalizePurchaseRow));
     }
 
-    if (!['BODH', 'BAG'].includes(packaging_type)) {
-      return res.status(400).json({ 
-        error: 'packaging_type must be either BODH or BAG' 
-      });
-    }
-
-    // Parse numeric fields
-    const processWeightNum = Number(process_weight);
-    const packagingWeightNum = Number(packaging_weight) || 0;
-    const ratePerKgNum = Number(rate_per_kg);
-
-    const { data, error } = await supabase
-      .from('purchases')
-      .insert({
+    if (req.method === 'POST') {
+      const {
         farmer_id,
         purchase_date,
         packaging_type,
-        process_weight: processWeightNum,
-        packaging_weight: packagingWeightNum,
-        rate_per_kg: ratePerKgNum,
-        remarks: remarks || null
-      })
-      .select(`
-        *,
-        farmers (
-          farmer_code,
-          name,
-          village
-        )
-      `)
-      .single();
+        process_weight,
+        packaging_weight,
+        rate_per_kg,
+        remarks
+      } = req.body;
 
-    if (error) {
-      return res.status(500).json({ error: error.message });
+      if (!farmer_id || !purchase_date || !packaging_type || !process_weight || !rate_per_kg) {
+        return res.status(400).json({
+          error: 'farmer_id, purchase_date, packaging_type, process_weight, and rate_per_kg are required'
+        });
+      }
+
+      if (!['BODH', 'BAG'].includes(packaging_type)) {
+        return res.status(400).json({
+          error: 'packaging_type must be either BODH or BAG'
+        });
+      }
+
+      const processWeightNum = Number(process_weight);
+      const packagingWeightNum = Number(packaging_weight) || 0;
+      const ratePerKgNum = Number(rate_per_kg);
+
+      const insertSql = `
+        INSERT INTO purchases (
+          farmer_id, purchase_date, packaging_type,
+          process_weight, packaging_weight, rate_per_kg, remarks
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING *
+      `;
+
+      const inserted = await query(insertSql, [
+        Number(farmer_id),
+        purchase_date,
+        packaging_type,
+        processWeightNum,
+        packagingWeightNum,
+        ratePerKgNum,
+        remarks || null
+      ]);
+
+      const row = inserted.rows?.[0];
+
+      const selectSql = `
+        SELECT
+          p.*, 
+          json_build_object(
+            'farmer_code', f.farmer_code,
+            'name', f.name,
+            'village', f.village
+          ) AS farmers
+        FROM purchases p
+        LEFT JOIN farmers f ON f.id = p.farmer_id
+        WHERE p.id = $1
+      `;
+      const result = await query(selectSql, [row.id]);
+      return res.status(201).json(normalizePurchaseRow(result.rows?.[0]));
     }
 
-    return res.status(201).json(data);
+    res.setHeader('Allow', ['GET', 'POST']);
+    return res.status(405).end(`Method ${req.method} Not Allowed`);
+  } catch (err) {
+    console.error('Purchases API error:', err);
+    return res.status(500).json({ error: err.message || 'Internal server error' });
   }
-
-  res.setHeader('Allow', ['GET', 'POST']);
-  res.status(405).end(`Method ${req.method} Not Allowed`);
 }

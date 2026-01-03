@@ -2,17 +2,12 @@ services:
   web:
     build:
       context: ./nextjs
-      args:
-        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-        SUPABASE_URL: ${SUPABASE_URL}
-        SUPABASE_KEY: ${SUPABASE_KEY}
+      args: {}
     ports:
       - "3000:3000"
     env_file:
       - ./nextjs/.env.local
     environment:
       NODE_ENV: production
-      SUPABASE_URL: ${SUPABASE_URL}
-      SUPABASE_KEY: ${SUPABASE_KEY}
+      # DATABASE_URL is provided by Render in production
     restart: unless-stopped

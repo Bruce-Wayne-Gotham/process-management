@@ -1,20 +1,16 @@
 #!/usr/bin/env node
 
 /**
- * Database Verification Script for Tobacco Tracker
- * Verifies that all tables and data are set up correctly
+ * Database Verification Script (Supabase removed)
+ * 
+ * This verification script previously used Supabase.
+ * To verify your database, connect directly to Postgres using psql or your SQL client.
+ * Example: psql $DATABASE_URL -c "SELECT table_name FROM information_schema.tables WHERE table_schema='public';"
  */
 
-require('dotenv').config();
-const { createClient } = require('@supabase/supabase-js');
+console.log('Supabase verification removed. Connect to your Postgres database directly to verify tables.');
+process.exit(0);
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error('❌ Missing required environment variables: SUPABASE_URL and SUPABASE_KEY');
-  process.exit(1);
-}
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 

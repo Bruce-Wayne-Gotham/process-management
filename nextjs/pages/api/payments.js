@@ -1,88 +1,98 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing Supabase environment variables');
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { query } from '../../lib/db';
 
 export default async function handler(req, res) {
-  if (req.method === 'GET') {
-    try {
-      const { data: payments, error } = await supabase
-        .from('payments')
-        .select(`
-          *,
-          purchases (
-            id,
-            purchase_date,
-            total_amount,
-            farmers (
-              name,
-              farmer_code,
-              village
-            )
-          )
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Supabase error:', error);
-        return res.status(500).json({ error: error.message });
-      }
-
-      return res.status(200).json(payments || []);
-    } catch (error) {
-      console.error('API error:', error);
-      return res.status(500).json({ error: 'Internal server error' });
-    }
+  function normalizePaymentRow(row) {
+    return {
+      ...row,
+      purchase_id: row.purchase_id !== null ? Number(row.purchase_id) : null,
+      amount_paid: row.amount_paid !== null ? Number(row.amount_paid) : null,
+      purchases: row.purchases || null
+    };
   }
 
-  if (req.method === 'POST') {
-    try {
-      const { 
-        purchase_id, 
-        payment_date, 
+  try {
+    if (req.method === 'GET') {
+      const sql = `
+        SELECT
+          pay.*,
+          json_build_object(
+            'id', p.id,
+            'purchase_date', p.purchase_date,
+            'total_amount', p.total_amount,
+            'farmers', json_build_object(
+              'name', f.name,
+              'farmer_code', f.farmer_code,
+              'village', f.village
+            )
+          ) AS purchases
+        FROM payments pay
+        LEFT JOIN purchases p ON p.id = pay.purchase_id
+        LEFT JOIN farmers f ON f.id = p.farmer_id
+        ORDER BY pay.created_at DESC
+      `;
+      const result = await query(sql);
+      return res.status(200).json((result.rows || []).map(normalizePaymentRow));
+    }
+
+    if (req.method === 'POST') {
+      const {
+        purchase_id,
+        payment_date,
         amount_paid,
         payment_mode = 'CASH',
         transaction_ref,
         remarks
       } = req.body;
 
-      // Validation
       if (!purchase_id || !payment_date || !amount_paid) {
-        return res.status(400).json({ 
-          error: 'Purchase ID, payment date, and amount are required' 
+        return res.status(400).json({
+          error: 'Purchase ID, payment date, and amount are required'
         });
       }
 
-      const { data: payment, error } = await supabase
-        .from('payments')
-        .insert([{
-          purchase_id: parseInt(purchase_id),
-          payment_date,
-          amount_paid: parseFloat(amount_paid),
-          payment_mode,
-          transaction_ref: transaction_ref || null,
-          remarks: remarks || null
-        }])
-        .select()
-        .single();
+      const insertSql = `
+        INSERT INTO payments (
+          purchase_id, payment_date, amount_paid, payment_mode, transaction_ref, remarks
+        ) VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING *
+      `;
 
-      if (error) {
-        console.error('Supabase error:', error);
-        return res.status(500).json({ error: error.message });
-      }
+      const inserted = await query(insertSql, [
+        Number(purchase_id),
+        payment_date,
+        Number(amount_paid),
+        payment_mode,
+        transaction_ref || null,
+        remarks || null
+      ]);
 
-      return res.status(201).json(payment);
-    } catch (error) {
-      console.error('API error:', error);
-      return res.status(500).json({ error: 'Internal server error' });
+      const row = inserted.rows?.[0];
+      const selectSql = `
+        SELECT
+          pay.*,
+          json_build_object(
+            'id', p.id,
+            'purchase_date', p.purchase_date,
+            'total_amount', p.total_amount,
+            'farmers', json_build_object(
+              'name', f.name,
+              'farmer_code', f.farmer_code,
+              'village', f.village
+            )
+          ) AS purchases
+        FROM payments pay
+        LEFT JOIN purchases p ON p.id = pay.purchase_id
+        LEFT JOIN farmers f ON f.id = p.farmer_id
+        WHERE pay.id = $1
+      `;
+
+      const result = await query(selectSql, [row.id]);
+      return res.status(201).json(normalizePaymentRow(result.rows?.[0]));
     }
-  }
 
-  return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ error: 'Method not allowed' });
+  } catch (error) {
+    console.error('Payments API error:', error);
+    return res.status(500).json({ error: error.message || 'Internal server error' });
+  }
 }

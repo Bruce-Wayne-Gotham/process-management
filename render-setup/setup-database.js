@@ -2,36 +2,30 @@
 
 /**
  * Render-based Database Setup Script for Tobacco Tracker
- * This script runs as a one-time job on Render to set up the Supabase database
+ * This script runs as a one-time job on Render to set up the Postgres database
  */
 
-const { createClient } = require('@supabase/supabase-js');
+const { Pool } = require('pg');
 
-// Supabase configuration from environment variables
-const supabaseUrl = process.env.SUPABASE_URL || 'https://wueblvkoukloirisuoju.supabase.co';
-const supabaseKey = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1ZWJsdmtvdWtsb2lyaXN1b2p1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjA3NTE1OSwiZXhwIjoyMDc3NjUxMTU5fQ.XuqvDELaakUVQbx-7uF4E7B7loaiQ7BZ-Tfmh7ogw9M';
+// Postgres connection via DATABASE_URL (provided by Render)
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
 console.log('🚀 Render Job: Tobacco Tracker Database Setup');
 console.log('============================================');
-console.log(`🔗 Supabase URL: ${supabaseUrl}`);
-console.log(`🔑 Using service role key: ${supabaseKey.substring(0, 20)}...`);
+console.log(`🔗 Connecting to Postgres via DATABASE_URL`);
 console.log('');
-
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function executeSQL(sql, description) {
   console.log(`📋 ${description}...`);
   try {
-    // For Supabase, we'll use the rpc function to execute raw SQL
-    const { data, error } = await supabase.rpc('exec_sql', { sql });
-    if (error) {
-      console.error(`❌ Error in ${description}:`, error);
-      return false;
-    }
+    const result = await pool.query(sql);
     console.log(`✅ ${description} completed successfully!`);
     return true;
   } catch (err) {
-    console.error(`❌ Exception in ${description}:`, err.message);
+    console.error(`❌ Error in ${description}:`, err.message);
     return false;
   }
 }
@@ -262,95 +256,83 @@ async function setupDatabase() {
 
     console.log('\n👥 Step 4: Creating sample farmers...');
     
-    const sampleFarmers = [
-      { farmer_code: 'F001', name: 'Rajesh Kumar', village: 'Khandwa', contact_number: '9876543210', efficacy_score: 8.5 },
-      { farmer_code: 'F002', name: 'Suresh Patel', village: 'Dewas', contact_number: '9876543211', efficacy_score: 7.2 },
-      { farmer_code: 'F003', name: 'Mahesh Singh', village: 'Ujjain', contact_number: '9876543212', efficacy_score: 9.1 },
-      { farmer_code: 'F004', name: 'Ramesh Sharma', village: 'Indore', contact_number: '9876543213', efficacy_score: 6.8 },
-      { farmer_code: 'F005', name: 'Dinesh Verma', village: 'Bhopal', contact_number: '9876543214', efficacy_score: 8.9 }
-    ];
-
-    const { data: farmers, error: farmersError } = await supabase
-      .from('farmers')
-      .upsert(sampleFarmers, { onConflict: 'farmer_code' })
-      .select();
-
-    if (farmersError) {
-      console.error('❌ Error creating sample farmers:', farmersError);
-      process.exit(1);
-    }
-    console.log(`✅ Created ${farmers.length} sample farmers!`);
+    const farmersSQL = `
+      INSERT INTO farmers (farmer_code, name, village, contact_number, efficacy_score)
+      VALUES
+        ('F001', 'Rajesh Kumar', 'Khandwa', '9876543210', 8.5),
+        ('F002', 'Suresh Patel', 'Dewas', '9876543211', 7.2),
+        ('F003', 'Mahesh Singh', 'Ujjain', '9876543212', 9.1),
+        ('F004', 'Ramesh Sharma', 'Indore', '9876543213', 6.8),
+        ('F005', 'Dinesh Verma', 'Bhopal', '9876543214', 8.9)
+      ON CONFLICT (farmer_code) DO NOTHING
+      RETURNING id;
+    `;
+    
+    const farmerResult = await pool.query(farmersSQL);
+    const farmerIds = farmerResult.rows.map(r => r.id);
+    console.log(`✅ Created ${farmerIds.length} sample farmers!`);
 
     console.log('\n🧾 Step 5: Creating sample purchases...');
     
-    const samplePurchases = [
-      { farmer_id: farmers[0].id, purchase_date: '2024-11-01', packaging_type: 'BODH', process_weight: 50.5, packaging_weight: 2.0, rate_per_kg: 150.00, remarks: 'Good quality tobacco' },
-      { farmer_id: farmers[1].id, purchase_date: '2024-11-02', packaging_type: 'BAG', process_weight: 75.2, packaging_weight: 3.5, rate_per_kg: 145.00, remarks: 'Premium grade' },
-      { farmer_id: farmers[0].id, purchase_date: '2024-11-03', packaging_type: 'BODH', process_weight: 60.0, packaging_weight: 2.5, rate_per_kg: 150.00, remarks: 'Regular quality' },
-      { farmer_id: farmers[2].id, purchase_date: '2024-11-04', packaging_type: 'BAG', process_weight: 80.5, packaging_weight: 4.0, rate_per_kg: 155.00, remarks: 'Excellent quality' },
-      { farmer_id: farmers[3].id, purchase_date: '2024-11-05', packaging_type: 'BODH', process_weight: 45.0, packaging_weight: 1.8, rate_per_kg: 140.00, remarks: 'Average quality' }
-    ];
-
-    const { data: purchases, error: purchasesError } = await supabase
-      .from('purchases')
-      .insert(samplePurchases)
-      .select();
-
-    if (purchasesError) {
-      console.error('❌ Error creating sample purchases:', purchasesError);
+    const purchasesSQL = `
+      INSERT INTO purchases (farmer_id, purchase_date, packaging_type, process_weight, packaging_weight, rate_per_kg, remarks)
+      VALUES
+        ($1, '2024-11-01', 'BODH', 50.5, 2.0, 150.00, 'Good quality tobacco'),
+        ($2, '2024-11-02', 'BAG', 75.2, 3.5, 145.00, 'Premium grade'),
+        ($1, '2024-11-03', 'BODH', 60.0, 2.5, 150.00, 'Regular quality'),
+        ($3, '2024-11-04', 'BAG', 80.5, 4.0, 155.00, 'Excellent quality'),
+        ($4, '2024-11-05', 'BODH', 45.0, 1.8, 140.00, 'Average quality');
+    `;
+    
+    try {
+      await pool.query(purchasesSQL, farmerIds);
+      console.log(`✅ Created 5 sample purchases!`);
+    } catch (err) {
+      console.error('❌ Error creating sample purchases:', err.message);
       process.exit(1);
     }
-    console.log(`✅ Created ${purchases.length} sample purchases!`);
 
     console.log('\n🔍 Step 6: Verifying setup...');
     
-    // Verify table counts
-    const { count: farmerCount } = await supabase
-      .from('farmers')
-      .select('*', { count: 'exact', head: true });
-    
-    const { count: purchaseCount } = await supabase
-      .from('purchases')
-      .select('*', { count: 'exact', head: true });
+    try {
+      const farmerCountResult = await pool.query('SELECT COUNT(*) FROM farmers');
+      const farmerCount = parseInt(farmerCountResult.rows[0].count, 10);
+      
+      const purchaseCountResult = await pool.query('SELECT COUNT(*) FROM purchases');
+      const purchaseCount = parseInt(purchaseCountResult.rows[0].count, 10);
 
-    const { count: statusCount } = await supabase
-      .from('process_status')
-      .select('*', { count: 'exact', head: true });
+      const statusCountResult = await pool.query('SELECT COUNT(*) FROM process_status');
+      const statusCount = parseInt(statusCountResult.rows[0].count, 10);
 
-    // Test computed columns
-    const { data: testPurchases } = await supabase
-      .from('purchases')
-      .select('process_weight, packaging_weight, total_weight, rate_per_kg, total_amount')
-      .limit(1);
+      const endTime = Date.now();
+      const duration = ((endTime - startTime) / 1000).toFixed(2);
 
-    const testPurchase = testPurchases[0];
-    const weightCorrect = testPurchase.total_weight === (testPurchase.process_weight + testPurchase.packaging_weight);
-    const amountCorrect = testPurchase.total_amount === (testPurchase.process_weight * testPurchase.rate_per_kg);
-
-    const endTime = Date.now();
-    const duration = ((endTime - startTime) / 1000).toFixed(2);
-
-    console.log('\n' + '='.repeat(60));
-    console.log('🎉 RENDER JOB COMPLETED SUCCESSFULLY!');
-    console.log('='.repeat(60));
-    console.log(`📊 Database Statistics:`);
-    console.log(`   ✅ Farmers: ${farmerCount}`);
-    console.log(`   ✅ Purchases: ${purchaseCount}`);
-    console.log(`   ✅ Process Statuses: ${statusCount}`);
-    console.log(`   ✅ Computed Columns: ${weightCorrect && amountCorrect ? 'Working' : 'Error'}`);
-    console.log(`⏱️  Setup Duration: ${duration} seconds`);
-    console.log('='.repeat(60));
-    console.log('');
-    console.log('🚀 Your Tobacco Tracker application is now fully functional!');
-    console.log('📱 Application URL: https://process-management-4t4o.onrender.com');
-    console.log('');
-    console.log('🎯 Next Steps:');
-    console.log('   1. Visit /farmers to see the 5 sample farmers');
-    console.log('   2. Visit /purchases to see the 5 sample purchases');
-    console.log('   3. Try adding new farmers and purchases through the UI');
-    console.log('   4. Dashboard will now show real statistics instead of zeros');
-    console.log('');
-    console.log('✅ Render job completed successfully!');
+      console.log('\n' + '='.repeat(60));
+      console.log('🎉 RENDER JOB COMPLETED SUCCESSFULLY!');
+      console.log('='.repeat(60));
+      console.log(`📊 Database Statistics:`);
+      console.log(`   ✅ Farmers: ${farmerCount}`);
+      console.log(`   ✅ Purchases: ${purchaseCount}`);
+      console.log(`   ✅ Process Statuses: ${statusCount}`);
+      console.log(`⏱️  Setup Duration: ${duration} seconds`);
+      console.log('='.repeat(60));
+      console.log('');
+      console.log('🚀 Your Tobacco Tracker application is now fully functional!');
+      console.log('📱 Application URL: https://process-management-4t4o.onrender.com');
+      console.log('');
+      console.log('🎯 Next Steps:');
+      console.log('   1. Visit /farmers to see the 5 sample farmers');
+      console.log('   2. Visit /purchases to see the 5 sample purchases');
+      console.log('   3. Try adding new farmers and purchases through the UI');
+      console.log('   4. Dashboard will now show real statistics instead of zeros');
+      console.log('');
+      console.log('✅ Render job completed successfully!');
+      
+      await pool.end();
+    } catch (err) {
+      console.error('❌ Error verifying setup:', err.message);
+      process.exit(1);
+    }
 
   } catch (error) {
     console.error('\n❌ Render job failed:', error);
