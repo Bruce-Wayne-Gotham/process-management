@@ -1,13 +1,28 @@
-import { createClient } from '@supabase/supabase-js';
+import { query } from '../../lib/db';
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
+export default async function handler(req, res) {
+  try {
+    if (req.method === 'GET') {
+      const result = await query('SELECT * FROM process ORDER BY created_at DESC');
+      return res.status(200).json(result.rows || []);
+    }
 
-if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing Supabase environment variables');
+    if (req.method === 'POST') {
+      const { process_id, status, notes } = req.body;
+      if (!process_id || !status) {
+        return res.status(400).json({ error: 'process_id and status are required' });
+      }
+      const result = await query('SELECT * FROM process WHERE id = $1', [process_id]);
+      return res.status(201).json(result.rows[0] || {});
+    }
+
+    res.setHeader('Allow', ['GET', 'POST']);
+    return res.status(405).end(`Method ${req.method} Not Allowed`);
+  } catch (error) {
+    console.error('Database error:', error);
+    return res.status(500).json({ error: error.message || 'Internal server error' });
+  }
 }
-
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {

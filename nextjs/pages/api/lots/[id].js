@@ -1,4 +1,28 @@
-import { createClient } from '@supabase/supabase-js';
+import { query } from '../../../lib/db';
+
+export default async function handler(req, res) {
+  const { id } = req.query;
+  try {
+    if (req.method === 'GET') {
+      const result = await query('SELECT * FROM lots WHERE id = $1', [id]);
+      return res.status(200).json(result.rows[0] || null);
+    }
+    if (req.method === 'PUT') {
+      const { lot_code, lot_date, total_input_weight, remarks } = req.body;
+      const result = await query('UPDATE lots SET lot_code = $1, lot_date = $2, total_input_weight = $3, remarks = $4 WHERE id = $5 RETURNING *', [lot_code, lot_date, total_input_weight, remarks || null, id]);
+      return res.status(200).json(result.rows[0] || null);
+    }
+    if (req.method === 'DELETE') {
+      await query('DELETE FROM lots WHERE id = $1', [id]);
+      return res.status(204).send();
+    }
+    res.setHeader('Allow', ['GET', 'PUT', 'DELETE']);
+    return res.status(405).end(`Method ${req.method} Not Allowed`);
+  } catch (error) {
+    console.error('Database error:', error);
+    return res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+}
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;

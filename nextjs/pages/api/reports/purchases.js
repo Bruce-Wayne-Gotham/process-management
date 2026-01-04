@@ -1,4 +1,18 @@
-import { createClient } from '@supabase/supabase-js';
+import { query } from '../../../lib/db';
+
+export default async function handler(req, res) {
+  try {
+    if (req.method === 'GET') {
+      const result = await query('SELECT * FROM purchases ORDER BY created_at DESC');
+      return res.status(200).json(result.rows || []);
+    }
+    res.setHeader('Allow', ['GET']);
+    return res.status(405).end(`Method ${req.method} Not Allowed`);
+  } catch (error) {
+    console.error('Database error:', error);
+    return res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+}
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;

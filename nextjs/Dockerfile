@@ -12,14 +12,7 @@ RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 FROM node:18-alpine AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
-ARG SUPABASE_URL
-ARG SUPABASE_KEY
-ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
-ENV SUPABASE_URL=$SUPABASE_URL
-ENV SUPABASE_KEY=$SUPABASE_KEY
+# Database connection via DATABASE_URL (set in Render environment)
 COPY --from=deps /app/node_modules ./node_modules
 COPY nextjs/. .
 RUN npm run build
