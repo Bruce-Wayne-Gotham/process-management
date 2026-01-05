@@ -8,9 +8,19 @@
 const { Pool } = require('pg');
 
 // Postgres connection via DATABASE_URL (provided by Render)
+// Render Postgres databases always require SSL connections
+const connectionString = process.env.DATABASE_URL;
+const isRenderDatabase = connectionString && connectionString.includes('render.com');
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  connectionString: connectionString,
+  ssl: isRenderDatabase || process.env.NODE_ENV === 'production' 
+    ? { rejectUnauthorized: false } 
+    : false,
+  // Connection pool configuration
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
 });
 
 console.log('🚀 Render Job: Tobacco Tracker Database Setup');
