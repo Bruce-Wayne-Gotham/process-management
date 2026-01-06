@@ -1,23 +1,4 @@
-import { query } from '../../../lib/db';
-
-export default async function handler(req, res) {
-  const { id } = req.query;
-  try {
-    if (req.method === 'GET') {
-      const result = await query('SELECT * FROM payments WHERE id = $1', [id]);
-      return res.status(200).json(result.rows[0] || null);
-    }
-    if (req.method === 'DELETE') {
-      await query('DELETE FROM payments WHERE id = $1', [id]);
-      return res.status(204).send();
-    }
-    res.setHeader('Allow', ['GET', 'DELETE']);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
-  } catch (error) {
-    console.error('Database error:', error);
-    return res.status(500).json({ error: error.message || 'Internal server error' });
-  }
-}
+import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
@@ -128,5 +109,6 @@ export default async function handler(req, res) {
     }
   }
 
-  return res.status(405).json({ error: 'Method not allowed' });
+  res.setHeader('Allow', ['GET', 'PUT', 'DELETE']);
+  return res.status(405).end(`Method ${req.method} Not Allowed`);
 }
