@@ -1,11 +1,13 @@
 # Multi-stage Dockerfile at repo root for Render
 FROM node:18-alpine AS deps
 WORKDIR /app
+RUN apk add --no-cache libc6-compat
 COPY nextjs/package*.json ./
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 FROM node:18-alpine AS builder
 WORKDIR /app
+RUN apk add --no-cache libc6-compat
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY nextjs/. .
