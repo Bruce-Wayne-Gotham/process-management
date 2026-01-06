@@ -1,0 +1,10 @@
+{
+  "name": "tobacco-tracker-root",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "preinstall": "cd nextjs && (npm ci || npm install)",
+    "build": "cd nextjs && npm run build",
+    "start": "cd nextjs && npm run start"
+  }
+}
