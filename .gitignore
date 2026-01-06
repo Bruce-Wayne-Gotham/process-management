@@ -6,7 +6,14 @@ node_modules/
 .vercel/
 
 # Env files
+.env
+.env.local
+.env.*.local
 
+# AWS RDS Certificates
+certs/
+*.pem
+rds-ca-bundle.pem
 
 # Logs
 npm-debug.log*

@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import fs from 'fs';
 
 let pool;
 
@@ -8,18 +9,50 @@ function createPool() {
     throw new Error('Missing DATABASE_URL environment variable');
   }
 
-  // Render Postgres databases require SSL connections
-  // Check if this is a Render database (contains render.com) or production
+  // Determine database type and SSL requirements
   const isRenderDatabase = connectionString.includes('render.com');
-  const requiresSSL = isRenderDatabase || process.env.NODE_ENV === 'production';
+  const isAWSRDS = connectionString.includes('.rds.amazonaws.com') || 
+                   connectionString.includes('.rds.') ||
+                   process.env.DB_HOST?.includes('rds.amazonaws.com');
+  
+  // SSL configuration
+  let sslConfig = false;
+  
+  if (isAWSRDS) {
+    // AWS RDS requires SSL connections
+    // Option 1: Use AWS RDS CA certificate bundle (recommended for production)
+    const awsRdsCertPath = process.env.AWS_RDS_CA_CERT_PATH;
+    if (awsRdsCertPath && fs.existsSync(awsRdsCertPath)) {
+      sslConfig = {
+        rejectUnauthorized: true,
+        ca: fs.readFileSync(awsRdsCertPath).toString(),
+      };
+    } else {
+      // Option 2: Accept self-signed certificates (for development/testing)
+      // For production, download AWS RDS CA bundle from:
+      // https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+      sslConfig = process.env.NODE_ENV === 'production' 
+        ? { rejectUnauthorized: true }  // Production should use proper CA cert
+        : { rejectUnauthorized: false }; // Development
+    }
+  } else if (isRenderDatabase) {
+    // Render Postgres databases require SSL
+    sslConfig = { rejectUnauthorized: false };
+  } else if (process.env.NODE_ENV === 'production') {
+    // Other production databases should use SSL
+    sslConfig = { rejectUnauthorized: false };
+  }
 
   const poolConfig = {
     connectionString,
-    ssl: requiresSSL ? { rejectUnauthorized: false } : false,
+    ssl: sslConfig,
     // Connection pool configuration for reliability
-    max: 20, // Maximum number of clients in the pool
-    idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-    connectionTimeoutMillis: 10000, // Return an error after 10 seconds if connection could not be established
+    max: parseInt(process.env.DB_POOL_MAX || '20', 10), // Maximum number of clients in the pool
+    idleTimeoutMillis: parseInt(process.env.DB_POOL_IDLE_TIMEOUT || '30000', 10), // Close idle clients after 30 seconds
+    connectionTimeoutMillis: parseInt(process.env.DB_POOL_CONNECTION_TIMEOUT || '10000', 10), // Connection timeout
+    // Additional AWS RDS optimizations
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10000,
   };
 
   return new Pool(poolConfig);

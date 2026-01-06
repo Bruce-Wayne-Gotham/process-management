@@ -23,9 +23,15 @@ const pool = new Pool({
   connectionTimeoutMillis: 10000,
 });
 
-console.log('🚀 Render Job: Tobacco Tracker Database Setup');
-console.log('============================================');
-console.log(`🔗 Connecting to Postgres via DATABASE_URL`);
+console.log('🚀 Database Setup: Tobacco Tracker');
+console.log('===================================');
+if (isAWSRDS) {
+  console.log(`🔗 Connecting to AWS RDS PostgreSQL`);
+} else if (isRenderDatabase) {
+  console.log(`🔗 Connecting to Render Postgres`);
+} else {
+  console.log(`🔗 Connecting to PostgreSQL via DATABASE_URL`);
+}
 console.log('');
 
 async function executeSQL(sql, description) {
