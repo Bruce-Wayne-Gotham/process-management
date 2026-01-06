@@ -6,21 +6,57 @@
  */
 
 const { Pool } = require('pg');
+const fs = require('fs');
 
-// Postgres connection via DATABASE_URL (provided by Render)
-// Render Postgres databases always require SSL connections
+// Postgres connection via DATABASE_URL
 const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  console.error('❌ DATABASE_URL environment variable is required');
+  process.exit(1);
+}
+
+// Determine database type and SSL requirements
 const isRenderDatabase = connectionString && connectionString.includes('render.com');
+const isAWSRDS = connectionString.includes('.rds.amazonaws.com') || 
+                 connectionString.includes('.rds.');
+
+// SSL configuration
+let sslConfig = false;
+
+if (isAWSRDS) {
+  // AWS RDS requires SSL connections
+  const awsRdsCertPath = process.env.AWS_RDS_CA_CERT_PATH;
+  if (awsRdsCertPath && fs.existsSync(awsRdsCertPath)) {
+    sslConfig = {
+      rejectUnauthorized: true,
+      ca: fs.readFileSync(awsRdsCertPath).toString(),
+    };
+    console.log('✅ Using AWS RDS CA certificate for SSL');
+  } else {
+    sslConfig = process.env.NODE_ENV === 'production' 
+      ? { rejectUnauthorized: true }
+      : { rejectUnauthorized: false };
+    if (process.env.NODE_ENV === 'production') {
+      console.log('⚠️  WARNING: Production should use AWS RDS CA certificate');
+      console.log('   Download from: https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem');
+    }
+  }
+} else if (isRenderDatabase) {
+  // Render Postgres databases require SSL
+  sslConfig = { rejectUnauthorized: false };
+} else if (process.env.NODE_ENV === 'production') {
+  sslConfig = { rejectUnauthorized: false };
+}
 
 const pool = new Pool({
   connectionString: connectionString,
-  ssl: isRenderDatabase || process.env.NODE_ENV === 'production' 
-    ? { rejectUnauthorized: false } 
-    : false,
+  ssl: sslConfig,
   // Connection pool configuration
-  max: 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
+  max: parseInt(process.env.DB_POOL_MAX || '10', 10),
+  idleTimeoutMillis: parseInt(process.env.DB_POOL_IDLE_TIMEOUT || '30000', 10),
+  connectionTimeoutMillis: parseInt(process.env.DB_POOL_CONNECTION_TIMEOUT || '10000', 10),
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000,
 });
 
 console.log('🚀 Database Setup: Tobacco Tracker');

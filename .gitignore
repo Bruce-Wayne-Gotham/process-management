@@ -35,3 +35,6 @@ Thumbs.db
 coverage/
 dist/
 build/
+ 
+# Local MCP config with API tokens
+windsurf_mcp_config.json
