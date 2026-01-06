@@ -1,77 +1,60 @@
 import { query } from '../../../lib/db';
 
-export default async function handler(req, res) {
-  const { id } = req.query;
-  try {
-    if (req.method === 'GET') {
-      const result = await query('SELECT * FROM lots WHERE id = $1', [id]);
-      return res.status(200).json(result.rows[0] || null);
-    }
-    if (req.method === 'PUT') {
-      const { lot_code, lot_date, total_input_weight, remarks } = req.body;
-      const result = await query('UPDATE lots SET lot_code = $1, lot_date = $2, total_input_weight = $3, remarks = $4 WHERE id = $5 RETURNING *', [lot_code, lot_date, total_input_weight, remarks || null, id]);
-      return res.status(200).json(result.rows[0] || null);
-    }
-    if (req.method === 'DELETE') {
-      await query('DELETE FROM lots WHERE id = $1', [id]);
-      return res.status(204).send();
-    }
-    res.setHeader('Allow', ['GET', 'PUT', 'DELETE']);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
-  } catch (error) {
-    console.error('Database error:', error);
-    return res.status(500).json({ error: error.message || 'Internal server error' });
-  }
+function normalizeLotRow(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    id: row.id !== null ? Number(row.id) : null,
+    total_input_weight: row.total_input_weight !== null ? Number(row.total_input_weight) : null,
+    lot_purchases: row.lot_purchases || []
+  };
 }
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing Supabase environment variables');
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default async function handler(req, res) {
   const { id } = req.query;
 
   if (req.method === 'GET') {
     try {
-      const { data: lot, error } = await supabase
-        .from('lots')
-        .select(`
-          *,
-          lot_purchases (
-            id,
-            purchase_id,
-            used_weight,
-            purchases (
-              id,
-              farmer_id,
-              purchase_date,
-              process_weight,
-              total_amount,
-              farmers (
-                farmer_code,
-                name,
-                village
+      const sql = `
+        SELECT
+          l.*,
+          COALESCE(
+            json_agg(
+              json_build_object(
+                'id', lp.id,
+                'purchase_id', lp.purchase_id,
+                'used_weight', lp.used_weight,
+                'purchases', json_build_object(
+                  'id', p.id,
+                  'farmer_id', p.farmer_id,
+                  'purchase_date', p.purchase_date,
+                  'process_weight', p.process_weight,
+                  'total_amount', p.total_amount,
+                  'farmers', json_build_object(
+                    'farmer_code', f.farmer_code,
+                    'name', f.name,
+                    'village', f.village
+                  )
+                )
               )
-            )
-          )
-        `)
-        .eq('id', id)
-        .single();
+            ) FILTER (WHERE lp.id IS NOT NULL),
+            '[]'::json
+          ) AS lot_purchases
+        FROM lots l
+        LEFT JOIN lot_purchases lp ON lp.lot_id = l.id
+        LEFT JOIN purchases p ON p.id = lp.purchase_id
+        LEFT JOIN farmers f ON f.id = p.farmer_id
+        WHERE l.id = $1
+        GROUP BY l.id
+      `;
+      const result = await query(sql, [id]);
+      const row = result.rows?.[0];
 
-      if (error) {
-        console.error('Supabase error:', error);
-        if (error.code === 'PGRST116') {
-          return res.status(404).json({ error: 'Lot not found' });
-        }
-        return res.status(500).json({ error: error.message });
+      if (!row) {
+        return res.status(404).json({ error: 'Lot not found' });
       }
 
-      return res.status(200).json(lot);
+      return res.status(200).json(normalizeLotRow(row));
     } catch (error) {
       console.error('API error:', error);
       return res.status(500).json({ error: 'Internal server error' });
@@ -82,31 +65,32 @@ export default async function handler(req, res) {
     try {
       const { lot_code, lot_date, total_input_weight, remarks } = req.body;
 
-      const updateData = {};
-      if (lot_code !== undefined) updateData.lot_code = lot_code;
-      if (lot_date !== undefined) updateData.lot_date = lot_date;
-      if (total_input_weight !== undefined) updateData.total_input_weight = parseFloat(total_input_weight);
-      if (remarks !== undefined) updateData.remarks = remarks || null;
+      const updated = await query(
+        `
+        UPDATE lots
+        SET
+          lot_code = COALESCE($1, lot_code),
+          lot_date = COALESCE($2, lot_date),
+          total_input_weight = COALESCE($3, total_input_weight),
+          remarks = COALESCE($4, remarks)
+        WHERE id = $5
+        RETURNING *
+      `,
+        [
+          lot_code !== undefined ? lot_code : null,
+          lot_date !== undefined ? lot_date : null,
+          total_input_weight !== undefined ? parseFloat(total_input_weight) : null,
+          remarks !== undefined ? remarks || null : null,
+          id
+        ]
+      );
 
-      const { data: lot, error } = await supabase
-        .from('lots')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Supabase error:', error);
-        if (error.code === 'PGRST116') {
-          return res.status(404).json({ error: 'Lot not found' });
-        }
-        if (error.code === '23505') {
-          return res.status(409).json({ error: 'Lot code already exists' });
-        }
-        return res.status(500).json({ error: error.message });
+      const row = updated.rows?.[0];
+      if (!row) {
+        return res.status(404).json({ error: 'Lot not found' });
       }
 
-      return res.status(200).json(lot);
+      return res.status(200).json(row);
     } catch (error) {
       console.error('API error:', error);
       return res.status(500).json({ error: 'Internal server error' });
@@ -115,16 +99,10 @@ export default async function handler(req, res) {
 
   if (req.method === 'DELETE') {
     try {
-      const { error } = await supabase
-        .from('lots')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('Supabase error:', error);
-        return res.status(500).json({ error: error.message });
+      const result = await query('DELETE FROM lots WHERE id = $1', [id]);
+      if (result.rowCount === 0) {
+        return res.status(404).json({ error: 'Lot not found' });
       }
-
       return res.status(204).send();
     } catch (error) {
       console.error('API error:', error);

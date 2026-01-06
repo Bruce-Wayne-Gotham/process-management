@@ -1,114 +1,117 @@
-import { createClient } from '@supabase/supabase-js';
+import { query } from '../../../lib/db';
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing Supabase environment variables');
+function normalizePaymentRow(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    purchase_id: row.purchase_id !== null ? Number(row.purchase_id) : null,
+    amount_paid: row.amount_paid !== null ? Number(row.amount_paid) : null,
+    purchases: row.purchases || null
+  };
 }
-
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default async function handler(req, res) {
   const { id } = req.query;
 
-  if (req.method === 'GET') {
-    try {
-      const { data: payment, error } = await supabase
-        .from('payments')
-        .select(`
-          *,
-          purchases (
-            id,
-            purchase_date,
-            total_amount,
-            process_weight,
-            rate_per_kg,
-            farmers (
-              id,
-              name,
-              farmer_code,
-              village,
-              contact_number
+  try {
+    if (req.method === 'GET') {
+      const sql = `
+        SELECT
+          pay.*,
+          json_build_object(
+            'id', p.id,
+            'purchase_date', p.purchase_date,
+            'total_amount', p.total_amount,
+            'process_weight', p.process_weight,
+            'rate_per_kg', p.rate_per_kg,
+            'farmers', json_build_object(
+              'id', f.id,
+              'name', f.name,
+              'farmer_code', f.farmer_code,
+              'village', f.village,
+              'contact_number', f.contact_number
             )
-          )
-        `)
-        .eq('id', id)
-        .single();
-
-      if (error) {
-        console.error('Supabase error:', error);
-        if (error.code === 'PGRST116') {
-          return res.status(404).json({ error: 'Payment not found' });
-        }
-        return res.status(500).json({ error: error.message });
+          ) AS purchases
+        FROM payments pay
+        LEFT JOIN purchases p ON p.id = pay.purchase_id
+        LEFT JOIN farmers f ON f.id = p.farmer_id
+        WHERE pay.id = $1
+      `;
+      const result = await query(sql, [id]);
+      const row = result.rows?.[0];
+      if (!row) {
+        return res.status(404).json({ error: 'Payment not found' });
       }
-
-      return res.status(200).json(payment);
-    } catch (error) {
-      console.error('API error:', error);
-      return res.status(500).json({ error: 'Internal server error' });
+      return res.status(200).json(normalizePaymentRow(row));
     }
-  }
 
-  if (req.method === 'PUT') {
-    try {
-      const { 
-        payment_date, 
-        amount_paid,
-        payment_mode,
-        transaction_ref,
-        remarks
-      } = req.body;
+    if (req.method === 'PUT') {
+      const { payment_date, amount_paid, payment_mode, transaction_ref, remarks } = req.body;
 
-      const updateData = {};
-      if (payment_date !== undefined) updateData.payment_date = payment_date;
-      if (amount_paid !== undefined) updateData.amount_paid = parseFloat(amount_paid);
-      if (payment_mode !== undefined) updateData.payment_mode = payment_mode;
-      if (transaction_ref !== undefined) updateData.transaction_ref = transaction_ref || null;
-      if (remarks !== undefined) updateData.remarks = remarks || null;
+      const updated = await query(
+        `
+        UPDATE payments
+        SET payment_date = $1,
+            amount_paid = $2,
+            payment_mode = $3,
+            transaction_ref = $4,
+            remarks = $5
+        WHERE id = $6
+        RETURNING *
+      `,
+        [
+          payment_date,
+          amount_paid !== undefined && amount_paid !== null ? Number(amount_paid) : null,
+          payment_mode || null,
+          transaction_ref || null,
+          remarks || null,
+          id
+        ]
+      );
 
-      const { data: payment, error } = await supabase
-        .from('payments')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Supabase error:', error);
-        if (error.code === 'PGRST116') {
-          return res.status(404).json({ error: 'Payment not found' });
-        }
-        return res.status(500).json({ error: error.message });
+      const updatedRow = updated.rows?.[0];
+      if (!updatedRow) {
+        return res.status(404).json({ error: 'Payment not found' });
       }
 
-      return res.status(200).json(payment);
-    } catch (error) {
-      console.error('API error:', error);
-      return res.status(500).json({ error: 'Internal server error' });
+      const selectSql = `
+        SELECT
+          pay.*,
+          json_build_object(
+            'id', p.id,
+            'purchase_date', p.purchase_date,
+            'total_amount', p.total_amount,
+            'process_weight', p.process_weight,
+            'rate_per_kg', p.rate_per_kg,
+            'farmers', json_build_object(
+              'id', f.id,
+              'name', f.name,
+              'farmer_code', f.farmer_code,
+              'village', f.village,
+              'contact_number', f.contact_number
+            )
+          ) AS purchases
+        FROM payments pay
+        LEFT JOIN purchases p ON p.id = pay.purchase_id
+        LEFT JOIN farmers f ON f.id = p.farmer_id
+        WHERE pay.id = $1
+      `;
+      const selectResult = await query(selectSql, [id]);
+      return res.status(200).json(normalizePaymentRow(selectResult.rows?.[0]));
     }
-  }
 
-  if (req.method === 'DELETE') {
-    try {
-      const { error } = await supabase
-        .from('payments')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('Supabase error:', error);
-        return res.status(500).json({ error: error.message });
+    if (req.method === 'DELETE') {
+      const result = await query('DELETE FROM payments WHERE id = $1', [id]);
+      if (result.rowCount === 0) {
+        return res.status(404).json({ error: 'Payment not found' });
       }
-
       return res.status(204).send();
-    } catch (error) {
-      console.error('API error:', error);
-      return res.status(500).json({ error: 'Internal server error' });
     }
-  }
 
-  res.setHeader('Allow', ['GET', 'PUT', 'DELETE']);
-  return res.status(405).end(`Method ${req.method} Not Allowed`);
+    res.setHeader('Allow', ['GET', 'PUT', 'DELETE']);
+    return res.status(405).end(`Method ${req.method} Not Allowed`);
+  } catch (error) {
+    console.error('Payments detail API error:', error);
+    return res.status(500).json({ error: error.message || 'Internal server error' });
+  }
 }

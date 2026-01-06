@@ -2,73 +2,46 @@ import { query } from '../../../lib/db';
 
 export default async function handler(req, res) {
   const { id } = req.query;
-  try {
-    if (req.method === 'GET') {
-      const result = await query('SELECT * FROM process WHERE id = $1', [id]);
-      return res.status(200).json(result.rows[0] || null);
-    }
-    if (req.method === 'DELETE') {
-      await query('DELETE FROM process WHERE id = $1', [id]);
-      return res.status(204).send();
-    }
-    res.setHeader('Allow', ['GET', 'DELETE']);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
-  } catch (error) {
-    console.error('Database error:', error);
-    return res.status(500).json({ error: error.message || 'Internal server error' });
-  }
-}
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing Supabase environment variables');
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-export default async function handler(req, res) {
-  const { id } = req.query;
 
   if (req.method === 'GET') {
     try {
-      const { data: statusHistory, error } = await supabase
-        .from('process_status_history')
-        .select(`
-          *,
-          processes (
-            process_code,
-            process_date,
-            input_weight,
-            lots (
-              lot_code,
-              lot_date
+      const sql = `
+        SELECT
+          psh.*,
+          json_build_object(
+            'process_code', p.process_code,
+            'process_date', p.process_date,
+            'input_weight', p.input_weight,
+            'lots', json_build_object(
+              'lot_code', l.lot_code,
+              'lot_date', l.lot_date
             )
-          ),
-          from_status (
-            status_code,
-            label,
-            description
-          ),
-          to_status (
-            status_code,
-            label,
-            description
-          )
-        `)
-        .eq('id', id)
-        .single();
+          ) AS processes,
+          json_build_object(
+            'status_code', fs.status_code,
+            'label', fs.label,
+            'description', fs.description
+          ) AS from_status,
+          json_build_object(
+            'status_code', ts.status_code,
+            'label', ts.label,
+            'description', ts.description
+          ) AS to_status
+        FROM process_status_history psh
+        LEFT JOIN process p ON p.id = psh.process_id
+        LEFT JOIN lots l ON l.id = p.lot_id
+        LEFT JOIN process_status fs ON fs.id = psh.from_status_id
+        LEFT JOIN process_status ts ON ts.id = psh.to_status_id
+        WHERE psh.id = $1
+      `;
+      const result = await query(sql, [id]);
+      const row = result.rows?.[0];
 
-      if (error) {
-        console.error('Supabase error:', error);
-        if (error.code === 'PGRST116') {
-          return res.status(404).json({ error: 'Status history record not found' });
-        }
-        return res.status(500).json({ error: error.message });
+      if (!row) {
+        return res.status(404).json({ error: 'Status history record not found' });
       }
 
-      return res.status(200).json(statusHistory);
+      return res.status(200).json(row);
     } catch (error) {
       console.error('API error:', error);
       return res.status(500).json({ error: 'Internal server error' });
@@ -83,41 +56,30 @@ export default async function handler(req, res) {
         notes
       } = req.body;
 
-      const updateData = {};
-      if (changed_by !== undefined) updateData.changed_by = changed_by;
-      if (changed_at !== undefined) updateData.changed_at = changed_at;
-      if (notes !== undefined) updateData.notes = notes || null;
+      const updated = await query(
+        `
+        UPDATE process_status_history
+        SET
+          changed_by = COALESCE($1, changed_by),
+          changed_at = COALESCE($2, changed_at),
+          notes = COALESCE($3, notes)
+        WHERE id = $4
+        RETURNING *
+      `,
+        [
+          changed_by !== undefined ? changed_by : null,
+          changed_at !== undefined ? changed_at : null,
+          notes !== undefined ? notes || null : null,
+          id
+        ]
+      );
 
-      const { data: statusHistory, error } = await supabase
-        .from('process_status_history')
-        .update(updateData)
-        .eq('id', id)
-        .select(`
-          *,
-          processes (
-            process_code,
-            process_date
-          ),
-          from_status (
-            status_code,
-            label
-          ),
-          to_status (
-            status_code,
-            label
-          )
-        `)
-        .single();
-
-      if (error) {
-        console.error('Supabase error:', error);
-        if (error.code === 'PGRST116') {
-          return res.status(404).json({ error: 'Status history record not found' });
-        }
-        return res.status(500).json({ error: error.message });
+      const row = updated.rows?.[0];
+      if (!row) {
+        return res.status(404).json({ error: 'Status history record not found' });
       }
 
-      return res.status(200).json(statusHistory);
+      return res.status(200).json(row);
     } catch (error) {
       console.error('API error:', error);
       return res.status(500).json({ error: 'Internal server error' });
@@ -126,16 +88,13 @@ export default async function handler(req, res) {
 
   if (req.method === 'DELETE') {
     try {
-      const { error } = await supabase
-        .from('process_status_history')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('Supabase error:', error);
-        return res.status(500).json({ error: error.message });
+      const result = await query(
+        'DELETE FROM process_status_history WHERE id = $1',
+        [id]
+      );
+      if (result.rowCount === 0) {
+        return res.status(404).json({ error: 'Status history record not found' });
       }
-
       return res.status(204).send();
     } catch (error) {
       console.error('API error:', error);
