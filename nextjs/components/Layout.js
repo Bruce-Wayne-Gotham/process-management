@@ -6,14 +6,13 @@ export default function Layout({ children }) {
   const router = useRouter();
 
   const navItems = [
-    { href: '/', label: 'Dashboard', icon: '📊' },
-    { href: '/farmers', label: 'Farmers', icon: '👨‍🌾' },
-    { href: '/purchases', label: 'Purchases', icon: '🧾' },
-    { href: '/lots', label: 'Lots', icon: '📦' },
-    { href: '/process', label: 'Process', icon: '⚙️' },
-    { href: '/jardi', label: 'Jardi Output', icon: '🍂' },
-    { href: '/payments', label: 'Payments', icon: '💰' },
-    { href: '/manual-setup', label: 'Setup Database', icon: '🛠️' }
+    { href: '/', label: 'Dashboard', icon: '[D]' },
+    { href: '/farmers', label: 'Farmers', icon: '[F]' },
+    { href: '/purchases', label: 'Purchases', icon: '[P]' },
+    { href: '/lots', label: 'Lots', icon: '[L]' },
+    { href: '/process', label: 'Process', icon: '[PR]' },
+    { href: '/payments', label: 'Payments', icon: '[PA]' },
+    { href: '/manual-setup', label: 'Setup Database', icon: '[S]' }
   ];
 
   const isActive = (href) => {
@@ -36,7 +35,7 @@ export default function Layout({ children }) {
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <h1 style={{ margin: 0, fontSize: 'clamp(1.2rem, 4vw, 1.5rem)', fontWeight: 'bold' }}>
-              🚬 Tobacco Tracker
+              Tobacco Tracker
             </h1>
             <div style={{ fontSize: 'clamp(0.8rem, 2vw, 0.9rem)', opacity: 0.8 }}>
               Process Management System

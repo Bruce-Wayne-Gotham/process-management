@@ -51,7 +51,7 @@ export default function PurchasesPage() {
   if (loading) return (
     <Layout>
       <div style={{ textAlign: 'center', padding: '3rem' }}>
-        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>LOADING...</div>
         <p style={{ color: '#64748b' }}>Loading purchases...</p>
       </div>
     </Layout>
@@ -69,22 +69,22 @@ export default function PurchasesPage() {
         }}>
           <Card>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2rem', color: '#3b82f6', marginBottom: '0.5rem' }}>🧾</div>
+              <div style={{ fontSize: '2rem', color: '#3b82f6', marginBottom: '0.5rem' }}>[P]</div>
               <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e293b' }}>{totalPurchases}</div>
               <div style={{ fontSize: '0.875rem', color: '#64748b' }}>Total Purchases</div>
             </div>
           </Card>
           <Card>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2rem', color: '#10b981', marginBottom: '0.5rem' }}>⚖️</div>
+              <div style={{ fontSize: '2rem', color: '#10b981', marginBottom: '0.5rem' }}>[W]</div>
               <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e293b' }}>{totalWeight.toFixed(2)} kg</div>
               <div style={{ fontSize: '0.875rem', color: '#64748b' }}>Total Weight</div>
             </div>
           </Card>
           <Card>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2rem', color: '#f59e0b', marginBottom: '0.5rem' }}>💰</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e293b' }}>₹{totalAmount.toLocaleString()}</div>
+              <div style={{ fontSize: '2rem', color: '#f59e0b', marginBottom: '0.5rem' }}>[A]</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e293b' }}>Rs {totalAmount.toLocaleString()}</div>
               <div style={{ fontSize: '0.875rem', color: '#64748b' }}>Total Amount</div>
             </div>
           </Card>
@@ -95,8 +95,7 @@ export default function PurchasesPage() {
           actions={
             <Link href="/purchases/add" style={{ textDecoration: 'none' }}>
               <Button variant="primary">
-                <span>➕</span>
-                Record Purchase
+                [+] Record Purchase
               </Button>
             </Link>
           }
@@ -104,7 +103,7 @@ export default function PurchasesPage() {
           <div style={{ marginBottom: '1.5rem' }}>
             <input
               type="text"
-              placeholder="🔍 Search by farmer name, code, village, or packaging type..."
+              placeholder="Search by farmer name, code, village, or packaging type..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               style={{
@@ -185,18 +184,18 @@ export default function PurchasesPage() {
                       {p.total_weight} kg
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'right', color: '#1f2937' }}>
-                      ₹{p.rate_per_kg}
+                      Rs {p.rate_per_kg}
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'right', color: '#1f2937', fontWeight: '600' }}>
-                      ₹{p.total_amount?.toLocaleString()}
+                      Rs {p.total_amount?.toLocaleString()}
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                         <Button variant="outline" size="sm">
-                          👁️ View
+                          [V] View
                         </Button>
                         <Button variant="secondary" size="sm">
-                          ✏️ Edit
+                          [E] Edit
                         </Button>
                       </div>
                     </td>
@@ -207,7 +206,7 @@ export default function PurchasesPage() {
             
             {filtered.length === 0 && !error && (
               <div style={{ textAlign: 'center', padding: '3rem', color: '#9ca3af' }}>
-                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🧾</div>
+                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>[P]</div>
                 <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No purchases found</p>
                 <p style={{ fontSize: '0.9rem' }}>
                   {search ? 'Try adjusting your search terms' : 'Get started by recording your first purchase'}
