@@ -10,6 +10,100 @@ function normalizeLotRow(row) {
   };
 }
 
+function formatDateDDMMYYYY(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return null;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+async function generateEwayBillForLot(lotId, extraPayload) {
+  const lotResult = await query(
+    `
+      SELECT
+        l.id,
+        l.lot_code,
+        l.lot_date,
+        l.total_input_weight,
+        COALESCE(SUM(p.total_amount), 0) AS total_value
+      FROM lots l
+      LEFT JOIN lot_purchases lp ON lp.lot_id = l.id
+      LEFT JOIN purchases p ON p.id = lp.purchase_id
+      WHERE l.id = $1
+      GROUP BY l.id, l.lot_code, l.lot_date, l.total_input_weight
+    `,
+    [lotId]
+  );
+
+  const lot = lotResult.rows?.[0];
+  if (!lot) {
+    return { notFound: true };
+  }
+
+  const totalValueNumber =
+    lot.total_value !== null && lot.total_value !== undefined
+      ? Number(lot.total_value)
+      : 0;
+  const totalWeightNumber =
+    lot.total_input_weight !== null && lot.total_input_weight !== undefined
+      ? Number(lot.total_input_weight)
+      : 0;
+
+  const payload = {
+    ...extraPayload,
+    docNo: extraPayload.docNo || lot.lot_code,
+    docDate: extraPayload.docDate || formatDateDDMMYYYY(lot.lot_date),
+    totalQty:
+      extraPayload.totalQty !== undefined
+        ? extraPayload.totalQty
+        : totalWeightNumber,
+    totalValue:
+      extraPayload.totalValue !== undefined
+        ? extraPayload.totalValue
+        : totalValueNumber,
+    totInvValue:
+      extraPayload.totInvValue !== undefined
+        ? extraPayload.totInvValue
+        : totalValueNumber
+  };
+
+  const baseUrl = process.env.EWB_API_BASE_URL;
+  const token = process.env.EWB_API_AUTH_TOKEN;
+
+  if (!baseUrl || !token) {
+    return { error: 'EWB API configuration missing' };
+  }
+
+  const response = await fetch(`${baseUrl}/ewaybill`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(payload)
+  });
+
+  let data = null;
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
+
+  if (!response.ok) {
+    return {
+      error: 'Failed to generate e-way bill',
+      status: response.status,
+      details: data
+    };
+  }
+
+  return { data };
+}
+
 export default async function handler(req, res) {
   const { id } = req.query;
 
@@ -91,6 +185,31 @@ export default async function handler(req, res) {
       }
 
       return res.status(200).json(row);
+    } catch (error) {
+      console.error('API error:', error);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  if (req.method === 'POST') {
+    try {
+      const body = req.body || {};
+      const extraPayload = body.payload || {};
+      const result = await generateEwayBillForLot(id, extraPayload);
+
+      if (result.notFound) {
+        return res.status(404).json({ error: 'Lot not found' });
+      }
+
+      if (result.error) {
+        const status =
+          result.status && Number.isInteger(result.status) ? result.status : 500;
+        return res
+          .status(status)
+          .json({ error: result.error, details: result.details || null });
+      }
+
+      return res.status(200).json(result.data);
     } catch (error) {
       console.error('API error:', error);
       return res.status(500).json({ error: 'Internal server error' });
