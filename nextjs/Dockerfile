@@ -16,8 +16,12 @@ ENV NODE_ENV=production
 # Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
 COPY nextjs/. .
-# Normalize line endings (convert CRLF to LF) to prevent encoding issues
-RUN find . -name "*.js" -type f -exec sed -i 's/\r$//' {} \;
+# Install iconv-lite to handle any encoding issues, then convert all files to UTF-8
+RUN apt-get update && apt-get install -y iconv && \
+    find . -name "*.js" -o -name "*.json" | while read file; do \
+      iconv -f UTF-8 -t UTF-8 -c "$file" > "$file.tmp" && mv "$file.tmp" "$file" || true; \
+    done && \
+    apt-get remove -y iconv && apt-get clean
 # Build Next.js
 RUN npm run build
 
