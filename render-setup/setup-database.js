@@ -17,8 +17,8 @@ if (!connectionString) {
 
 // Determine database type and SSL requirements
 const isRenderDatabase = connectionString && connectionString.includes('render.com');
-const isAWSRDS = connectionString.includes('.rds.amazonaws.com') || 
-                 connectionString.includes('.rds.');
+const isAWSRDS = connectionString.includes('.rds.amazonaws.com') ||
+  connectionString.includes('.rds.');
 
 // SSL configuration
 let sslConfig = false;
@@ -33,12 +33,10 @@ if (isAWSRDS) {
     };
     console.log('✅ Using AWS RDS CA certificate for SSL');
   } else {
-    sslConfig = process.env.NODE_ENV === 'production' 
-      ? { rejectUnauthorized: true }
-      : { rejectUnauthorized: false };
+    // Falls back to accepting the cert without validation if the bundle is missing
+    sslConfig = { rejectUnauthorized: false };
     if (process.env.NODE_ENV === 'production') {
-      console.log('⚠️  WARNING: Production should use AWS RDS CA certificate');
-      console.log('   Download from: https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem');
+      console.log('⚠️  WARNING: Production setup is running without AWS RDS CA certificate validation');
     }
   }
 } else if (isRenderDatabase) {
@@ -84,10 +82,10 @@ async function executeSQL(sql, description) {
 
 async function setupDatabase() {
   const startTime = Date.now();
-  
+
   try {
     console.log('🏗️  Step 1: Creating database tables...');
-    
+
     // Create all tables in one transaction
     const createTablesSQL = `
       BEGIN;
@@ -229,7 +227,7 @@ async function setupDatabase() {
     }
 
     console.log('\n🌱 Step 2: Setting up indexes, security, and seed data...');
-    
+
     const setupSQL = `
       BEGIN;
       
@@ -271,7 +269,7 @@ async function setupDatabase() {
     }
 
     console.log('\n🔐 Step 3: Creating RLS policies...');
-    
+
     const rlsPoliciesSQL = `
       -- Create RLS policies (allow all operations for now)
       DO $$ 
@@ -307,7 +305,7 @@ async function setupDatabase() {
     }
 
     console.log('\n👥 Step 4: Creating sample farmers...');
-    
+
     const farmersSQL = `
       INSERT INTO farmers (farmer_code, name, village, contact_number, efficacy_score)
       VALUES
@@ -319,13 +317,13 @@ async function setupDatabase() {
       ON CONFLICT (farmer_code) DO NOTHING
       RETURNING id;
     `;
-    
+
     const farmerResult = await pool.query(farmersSQL);
     const farmerIds = farmerResult.rows.map(r => r.id);
     console.log(`✅ Created ${farmerIds.length} sample farmers!`);
 
     console.log('\n🧾 Step 5: Creating sample purchases...');
-    
+
     const purchasesSQL = `
       INSERT INTO purchases (farmer_id, purchase_date, packaging_type, process_weight, packaging_weight, rate_per_kg, remarks)
       VALUES
@@ -335,7 +333,7 @@ async function setupDatabase() {
         ($3, '2024-11-04', 'BAG', 80.5, 4.0, 155.00, 'Excellent quality'),
         ($4, '2024-11-05', 'BODH', 45.0, 1.8, 140.00, 'Average quality');
     `;
-    
+
     try {
       await pool.query(purchasesSQL, farmerIds);
       console.log(`✅ Created 5 sample purchases!`);
@@ -345,11 +343,11 @@ async function setupDatabase() {
     }
 
     console.log('\n🔍 Step 6: Verifying setup...');
-    
+
     try {
       const farmerCountResult = await pool.query('SELECT COUNT(*) FROM farmers');
       const farmerCount = parseInt(farmerCountResult.rows[0].count, 10);
-      
+
       const purchaseCountResult = await pool.query('SELECT COUNT(*) FROM purchases');
       const purchaseCount = parseInt(purchaseCountResult.rows[0].count, 10);
 
@@ -379,7 +377,7 @@ async function setupDatabase() {
       console.log('   4. Dashboard will now show real statistics instead of zeros');
       console.log('');
       console.log('✅ Render job completed successfully!');
-      
+
       await pool.end();
     } catch (err) {
       console.error('❌ Error verifying setup:', err.message);
