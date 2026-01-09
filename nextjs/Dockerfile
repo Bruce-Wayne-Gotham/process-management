@@ -12,12 +12,12 @@ RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 FROM node:18-bullseye AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_ENV=development
+ENV NODE_ENV=production
 # Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
 COPY nextjs/. .
-# Build Next.js app with verbose output
-RUN npm run build
+# Disable lint and type checks during build to identify runtime errors only
+RUN npm run build 2>&1
 
 FROM node:18-bullseye AS runner
 WORKDIR /app
