@@ -17,51 +17,63 @@ export default function Home() {
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
+    let timer;
     async function loadStats() {
       setLoading(true);
       setError(null);
+
+      // Request timeout safety net
+      const timeoutPromise = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error('Connection request timed out (7s)')), 7000);
+      });
+
       try {
-        // First check health
-        const healthRes = await fetch('/api/health');
-        if (!healthRes.ok) throw new Error('Health check failed');
-        const health = await healthRes.json();
+        const fetchStats = async () => {
+          // First check health
+          const healthRes = await fetch('/api/health');
+          if (!healthRes.ok) throw new Error('System health check failed');
+          const health = await healthRes.json();
 
-        if (!health.database?.connected) {
-          setError(health.database?.error || 'Database not connected');
-          setLoading(false);
-          return;
-        }
+          if (!health.database?.connected) {
+            throw new Error(health.database?.error || 'Database connection offline');
+          }
 
-        // Load farmers count
-        const farmersRes = await fetch('/api/farmers');
-        if (!farmersRes.ok) throw new Error('Failed to load farmers');
-        const farmers = await farmersRes.json();
-        const farmerCount = farmers.length;
+          // Load farmers count
+          const farmersRes = await fetch('/api/farmers');
+          if (!farmersRes.ok) throw new Error('Could not fetch farmers');
+          const farmers = await farmersRes.json();
 
-        // Load purchases count
-        const purchasesRes = await fetch('/api/purchases');
-        let purchaseCount = 0;
-        if (purchasesRes.ok) {
-          const purchases = await purchasesRes.json();
-          purchaseCount = purchases.length;
-        }
+          // Load purchases count
+          const purchasesRes = await fetch('/api/purchases');
+          let purchaseCount = 0;
+          if (purchasesRes.ok) {
+            const purchases = await purchasesRes.json();
+            purchaseCount = purchases.length;
+          }
 
-        // Update stats with real data
+          return { farmerCount: farmers.length, purchaseCount };
+        };
+
+        // Race the actual fetch against our 7s timeout
+        const data = await Promise.race([fetchStats(), timeoutPromise]);
+        clearTimeout(timer);
+
         setStats([
-          { label: 'Total Farmers', value: farmerCount.toString(), icon: '👨‍🌾', color: '#3b82f6' },
-          { label: 'Active Purchases', value: purchaseCount.toString(), icon: '🧾', color: '#10b981' },
+          { label: 'Total Farmers', value: data.farmerCount.toString(), icon: '👨‍🌾', color: '#3b82f6' },
+          { label: 'Active Purchases', value: data.purchaseCount.toString(), icon: '🧾', color: '#10b981' },
           { label: 'Processing Lots', value: '0', icon: '📦', color: '#f59e0b' },
           { label: 'Completed Processes', value: '0', icon: '✅', color: '#8b5cf6' },
         ]);
       } catch (err) {
-        console.error('Error loading dashboard stats:', err);
-        setError(err.message);
+        console.error('Frontend Dashboard Error:', err);
+        setError(err.message === 'Failed to fetch' ? 'Cannot reach the server. Check your internet or Render status.' : err.message);
       } finally {
         setLoading(false);
       }
     }
 
     loadStats();
+    return () => clearTimeout(timer);
   }, []);
 
   const quickActions = [

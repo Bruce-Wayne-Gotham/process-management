@@ -5,34 +5,36 @@ import path from 'path';
 let pool;
 let initialized = false;
 
+export async function query(text, params) {
+  const start = Date.now();
+  try {
+    const res = await getPool().query(text, params);
+    const duration = Date.now() - start;
+    console.log('[DB] Query executed', { text, duration: `${duration}ms`, rows: res.rowCount });
+    return res;
+  } catch (err) {
+    console.error('[DB] Query error', { text, message: err.message, code: err.code });
+    throw err;
+  }
+}
+
 function createPool() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
-    throw new Error('Missing DATABASE_URL environment variable');
+    throw new Error('DATABASE_URL is not defined');
   }
 
-  let sslConfig = false;
-  const awsRdsCertPath = process.env.AWS_RDS_CA_CERT_PATH;
+  // Basic SSL config - disabled strict checking to avoid common RDS/Render handshake issues
+  const sslConfig = { rejectUnauthorized: false };
 
-  if (awsRdsCertPath && fs.existsSync(awsRdsCertPath)) {
-    sslConfig = {
-      rejectUnauthorized: true,
-      ca: fs.readFileSync(awsRdsCertPath).toString(),
-    };
-  } else {
-    // If no CA cert is provided, we allow self-signed certificates for now.
-    // For maximum security in production, download the AWS RDS CA bundle.
-    sslConfig = { rejectUnauthorized: false };
-  }
+  console.log('[DB] Creating connection pool for', connectionString.split('@')[1] || 'URL');
 
   return new Pool({
     connectionString,
     ssl: sslConfig,
-    max: parseInt(process.env.DB_POOL_MAX || '20', 10),
-    idleTimeoutMillis: parseInt(process.env.DB_POOL_IDLE_TIMEOUT || '30000', 10),
-    connectionTimeoutMillis: parseInt(process.env.DB_POOL_CONNECTION_TIMEOUT || '10000', 10),
-    keepAlive: true,
-    keepAliveInitialDelayMillis: 10000,
+    connectionTimeoutMillis: 5000, // 5 seconds to connect or fail
+    idleTimeoutMillis: 10000,
+    max: 10
   });
 }
 
@@ -41,10 +43,6 @@ export function getPool() {
     pool = createPool();
   }
   return pool;
-}
-
-export async function query(text, params) {
-  return getPool().query(text, params);
 }
 
 export async function initializeDatabase() {

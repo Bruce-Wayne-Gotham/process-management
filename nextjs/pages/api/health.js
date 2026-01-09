@@ -5,7 +5,7 @@ export default async function handler(req, res) {
     // Check if DATABASE_URL is set
     const dbUrl = process.env.DATABASE_URL;
     const hasDatabaseUrl = !!dbUrl;
-    
+
     const response = {
       status: 'ok',
       timestamp: new Date().toISOString(),
@@ -25,23 +25,30 @@ export default async function handler(req, res) {
 
     // Try to query the database
     if (hasDatabaseUrl) {
+      const dbUrlMasked = dbUrl.replace(/:([^:@]+)@/, ':****@');
+      response.environment.databaseUrlMasked = dbUrlMasked;
+
       try {
+        console.log('[Health] Attempting database ping...');
         const result = await query('SELECT NOW() as current_time');
         response.database = {
           connected: true,
-          serverTime: result.rows[0]?.current_time
+          serverTime: result.rows[0]?.current_time,
+          status: 'reachable'
         };
       } catch (dbError) {
+        console.error('[Health] Database ping failed:', dbError.message);
         response.database = {
           connected: false,
           error: dbError.message,
-          code: dbError.code
+          code: dbError.code,
+          hint: 'Check AWS RDS Security Group inbound rules (0.0.0.0/0) and sslmode=require'
         };
       }
     } else {
       response.database = {
         connected: false,
-        error: 'DATABASE_URL not set in environment'
+        error: 'DATABASE_URL is missing'
       };
     }
 
