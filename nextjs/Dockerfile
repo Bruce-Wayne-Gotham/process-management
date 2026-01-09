@@ -16,8 +16,8 @@ ENV NODE_ENV=development
 # Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
 COPY nextjs/. .
-# Build Next.js app (continue even if there are warnings)
-RUN npm run build 2>&1 || echo "Build completed with warnings"
+# Build Next.js app with verbose output
+RUN npm run build
 
 FROM node:18-bullseye AS runner
 WORKDIR /app
