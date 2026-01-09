@@ -13,36 +13,54 @@ export default function Home() {
     { label: 'Completed Processes', value: '0', icon: '✅', color: '#8b5cf6' },
   ]);
 
+  const [error, setError] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+
   React.useEffect(() => {
     async function loadStats() {
+      setLoading(true);
+      setError(null);
       try {
+        // First check health
+        const healthRes = await fetch('/api/health');
+        if (!healthRes.ok) throw new Error('Health check failed');
+        const health = await healthRes.json();
+
+        if (!health.database?.connected) {
+          setError(health.database?.error || 'Database not connected');
+          setLoading(false);
+          return;
+        }
+
         // Load farmers count
         const farmersRes = await fetch('/api/farmers');
-        if (farmersRes.ok) {
-          const farmers = await farmersRes.json();
-          const farmerCount = farmers.length;
-          
-          // Load purchases count
-          const purchasesRes = await fetch('/api/purchases');
-          let purchaseCount = 0;
-          if (purchasesRes.ok) {
-            const purchases = await purchasesRes.json();
-            purchaseCount = purchases.length;
-          }
+        if (!farmersRes.ok) throw new Error('Failed to load farmers');
+        const farmers = await farmersRes.json();
+        const farmerCount = farmers.length;
 
-          // Update stats with real data
-          setStats([
-            { label: 'Total Farmers', value: farmerCount.toString(), icon: '👨‍🌾', color: '#3b82f6' },
-            { label: 'Active Purchases', value: purchaseCount.toString(), icon: '🧾', color: '#10b981' },
-            { label: 'Processing Lots', value: '0', icon: '📦', color: '#f59e0b' },
-            { label: 'Completed Processes', value: '0', icon: '✅', color: '#8b5cf6' },
-          ]);
+        // Load purchases count
+        const purchasesRes = await fetch('/api/purchases');
+        let purchaseCount = 0;
+        if (purchasesRes.ok) {
+          const purchases = await purchasesRes.json();
+          purchaseCount = purchases.length;
         }
-      } catch (error) {
-        console.error('Error loading dashboard stats:', error);
+
+        // Update stats with real data
+        setStats([
+          { label: 'Total Farmers', value: farmerCount.toString(), icon: '👨‍🌾', color: '#3b82f6' },
+          { label: 'Active Purchases', value: purchaseCount.toString(), icon: '🧾', color: '#10b981' },
+          { label: 'Processing Lots', value: '0', icon: '📦', color: '#f59e0b' },
+          { label: 'Completed Processes', value: '0', icon: '✅', color: '#8b5cf6' },
+        ]);
+      } catch (err) {
+        console.error('Error loading dashboard stats:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
     }
-    
+
     loadStats();
   }, []);
 
@@ -88,12 +106,35 @@ export default function Home() {
         </p>
       </div>
 
+      {loading && (
+        <div style={{ textAlign: 'center', padding: '2rem' }}>
+          <div className="spinner">⌛ Loading dashboard data...</div>
+        </div>
+      )}
+
+      {error && (
+        <div style={{
+          backgroundColor: '#fef2f2',
+          border: '1px solid #fee2e2',
+          borderRadius: '0.5rem',
+          padding: '1rem',
+          marginBottom: '2rem',
+          color: '#991b1b'
+        }}>
+          <h3 style={{ margin: '0 0 0.5rem 0' }}>⚠️ Connection Error</h3>
+          <p style={{ margin: 0 }}>{error}</p>
+          <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem' }}>
+            Please check your AWS RDS security groups and environment variables.
+          </p>
+        </div>
+      )}
+
       {/* Stats Cards */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
-        gap: '1.5rem', 
-        marginBottom: '2rem' 
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+        gap: '1.5rem',
+        marginBottom: '2rem'
       }}>
         {stats.map((stat, index) => (
           <Card key={index}>

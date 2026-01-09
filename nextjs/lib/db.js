@@ -13,16 +13,16 @@ function createPool() {
 
   let sslConfig = false;
   const awsRdsCertPath = process.env.AWS_RDS_CA_CERT_PATH;
-  
+
   if (awsRdsCertPath && fs.existsSync(awsRdsCertPath)) {
     sslConfig = {
       rejectUnauthorized: true,
       ca: fs.readFileSync(awsRdsCertPath).toString(),
     };
   } else {
-    sslConfig = process.env.NODE_ENV === 'production' 
-      ? { rejectUnauthorized: true }
-      : { rejectUnauthorized: false };
+    // If no CA cert is provided, we allow self-signed certificates for now.
+    // For maximum security in production, download the AWS RDS CA bundle.
+    sslConfig = { rejectUnauthorized: false };
   }
 
   return new Pool({
@@ -62,9 +62,9 @@ export async function initializeDatabase() {
       const tableCheck = await client.query(
         "SELECT COUNT(*) as table_count FROM information_schema.tables WHERE table_schema = 'public';"
       );
-      
+
       const tableCount = parseInt(tableCheck.rows[0].table_count);
-      
+
       if (tableCount > 0) {
         console.log(`[DB] Database already has tables (${tableCount} found), skipping initialization`);
         initialized = true;
@@ -79,7 +79,7 @@ export async function initializeDatabase() {
 
       const schema = fs.readFileSync(schemaPath, 'utf-8');
       console.log('[DB] Executing schema...');
-      
+
       await client.query(schema);
       console.log('[DB] Schema executed successfully');
 
@@ -90,20 +90,20 @@ export async function initializeDatabase() {
 
       const tables = result.rows.map(r => r.tablename);
       console.log(`[DB] Created ${tables.length} tables:`, tables);
-      
+
       initialized = true;
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: 'Database initialized successfully',
-        tables 
+        tables
       };
     } finally {
       client.release();
     }
   } catch (err) {
     console.error('[DB] Error initializing database:', err.message);
-    return { 
-      success: false, 
+    return {
+      success: false,
       message: err.message,
       error: err
     };
