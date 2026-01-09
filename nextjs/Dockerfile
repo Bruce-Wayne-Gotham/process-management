@@ -36,4 +36,3 @@ RUN npm install pg --no-save
 EXPOSE 3000
 # Initialize RDS database (idempotent) then start app
 CMD ["sh", "-c", "node render-rds-init.js && npm start"]
-CMD ["sh", "-c", "node render-rds-init.js && npm start"]
