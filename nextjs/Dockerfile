@@ -16,14 +16,10 @@ ENV NODE_ENV=production
 # Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
 COPY nextjs/. .
-# Verify files are present
-RUN echo "=== Build environment ===" && \
-    pwd && echo "=== Contents ===" && \
-    ls -la && echo "=== package.json ===" && \
-    cat package.json && echo "=== Node modules check ===" && \
-    ls node_modules/ | head -20 && \
-    echo "=== Building Next.js ===" && \
-    npm run build
+# Normalize line endings (convert CRLF to LF) to prevent encoding issues
+RUN find . -name "*.js" -type f -exec sed -i 's/\r$//' {} \;
+# Build Next.js
+RUN npm run build
 
 FROM node:18-bullseye AS runner
 WORKDIR /app
