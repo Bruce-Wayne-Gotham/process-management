@@ -8,6 +8,7 @@ WORKDIR /app
 COPY nextjs/package*.json ./
 # Prefer npm ci if lockfile exists; fallback to npm install
 # Switch to simple npm install to avoid lockfile issues across OS
+RUN ls -la /app && cat /app/package.json
 RUN npm install
 
 FROM node:18-bullseye AS builder
