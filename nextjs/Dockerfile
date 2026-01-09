@@ -16,12 +16,11 @@ ENV NODE_ENV=production
 # Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
 COPY nextjs/. .
-# Install iconv-lite to handle any encoding issues, then convert all files to UTF-8
-RUN apt-get update && apt-get install -y iconv && \
-    find . -name "*.js" -o -name "*.json" | while read file; do \
-      iconv -f UTF-8 -t UTF-8 -c "$file" > "$file.tmp" && mv "$file.tmp" "$file" || true; \
-    done && \
-    apt-get remove -y iconv && apt-get clean
+# Fix line endings - convert CRLF to LF on all source files
+RUN apt-get update && apt-get install -y dos2unix && \
+    find . -type f \( -name "*.js" -o -name "*.json" -o -name "*.jsx" \) \
+    -exec dos2unix {} \; && \
+    apt-get remove -y dos2unix && apt-get clean && rm -rf /var/lib/apt/lists/*
 # Build Next.js
 RUN npm run build
 
