@@ -16,8 +16,8 @@ ENV NODE_ENV=production
 # Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
 COPY nextjs/. .
-# Disable lint and type checks during build to identify runtime errors only
-RUN npm run build 2>&1
+# Build with verbose output for debugging
+RUN echo "Current directory:" && pwd && echo "Files:" && ls -la && npm run build 2>&1 | tee build.log
 
 FROM node:18-bullseye AS runner
 WORKDIR /app
