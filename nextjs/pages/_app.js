@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { initializeDatabase } from '../lib/db-init';
+import { initializeDatabase } from '../lib/db';
 
 function MyApp({ Component, pageProps }) {
   React.useEffect(() => {

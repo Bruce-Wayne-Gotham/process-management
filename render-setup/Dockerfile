@@ -1,14 +1,14 @@
 FROM node:18-alpine
 
-# Set working directory
 WORKDIR /app
 
-# Copy package.json and install dependencies
-COPY package.json ./
+# Copy package.json from the context root (passed as render-setup/package.json)
+# Or since we use dockerContext: . in render.yaml, we copy specifically:
+COPY render-setup/package.json ./
 RUN npm install --production
 
 # Copy setup script
-COPY setup-database.js ./
+COPY render-setup/setup-database.js ./
 
 # Set default command
 CMD ["node", "setup-database.js"]

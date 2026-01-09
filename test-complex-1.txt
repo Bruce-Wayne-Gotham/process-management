@@ -1,1 +1,0 @@
-Complex test file with "quotes" and 'apostrophes' and backslashes \ and special chars @#$%^&*()

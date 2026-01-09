@@ -1,0 +1,45 @@
+services:
+  # ---------------------------------------------------------------------------
+  # 1. APPLICATION CONTAINER (Web Service)
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: tobacco-tracker-app
+    env: docker
+    plan: free
+    dockerContext: .
+    dockerfilePath: nextjs/Dockerfile
+    envVars:
+      - key: DATABASE_URL
+        fromEnvVar: DATABASE_URL
+      - key: NODE_ENV
+        value: production
+      - key: AWS_RDS_CA_CERT_PATH
+        value: ./certs/rds-ca-bundle.pem
+
+  # ---------------------------------------------------------------------------
+  # 2. SETUP & MIGRATION CONTAINER (Job Service)
+  # ---------------------------------------------------------------------------
+  - type: job
+    name: tobacco-tracker-db-setup
+    env: docker
+    plan: free
+    dockerContext: .
+    dockerfilePath: render-setup/Dockerfile
+    envVars:
+      - key: DATABASE_URL
+        fromEnvVar: DATABASE_URL
+      - key: NODE_ENV
+        value: production
+
+  # ---------------------------------------------------------------------------
+  # 3. INTERNAL ANALYTICS / MCP CONTAINER (Private Service)
+  # ---------------------------------------------------------------------------
+  - type: pvt
+    name: tobacco-tracker-mcp
+    env: docker
+    plan: free
+    dockerContext: .
+    dockerfilePath: mcp/gemini/Dockerfile
+    envVars:
+      - key: GEMINI_API_KEY
+        fromEnvVar: GEMINI_API_KEY
