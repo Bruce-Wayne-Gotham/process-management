@@ -26,5 +26,11 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
+# Copy database schema and init script for RDS setup
+COPY sql ./sql
+COPY render-setup/render-rds-init.js ./render-rds-init.js
+# Install pg client for database initialization
+RUN npm install pg --no-save
 EXPOSE 3000
-CMD ["npm", "start"]
+# Initialize RDS database (idempotent) then start app
+CMD ["sh", "-c", "node render-rds-init.js && npm start"]

@@ -9,38 +9,23 @@ function createPool() {
     throw new Error('Missing DATABASE_URL environment variable');
   }
 
-  // Determine database type and SSL requirements
-  const isRenderDatabase = connectionString.includes('render.com');
-  const isAWSRDS = connectionString.includes('.rds.amazonaws.com') || 
-                   connectionString.includes('.rds.') ||
-                   process.env.DB_HOST?.includes('rds.amazonaws.com');
-  
-  // SSL configuration
+  // AWS RDS SSL configuration
+  // Option 1: Use AWS RDS CA certificate bundle (recommended for production)
+  const awsRdsCertPath = process.env.AWS_RDS_CA_CERT_PATH;
   let sslConfig = false;
   
-  if (isAWSRDS) {
-    // AWS RDS requires SSL connections
-    // Option 1: Use AWS RDS CA certificate bundle (recommended for production)
-    const awsRdsCertPath = process.env.AWS_RDS_CA_CERT_PATH;
-    if (awsRdsCertPath && fs.existsSync(awsRdsCertPath)) {
-      sslConfig = {
-        rejectUnauthorized: true,
-        ca: fs.readFileSync(awsRdsCertPath).toString(),
-      };
-    } else {
-      // Option 2: Accept self-signed certificates (for development/testing)
-      // For production, download AWS RDS CA bundle from:
-      // https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
-      sslConfig = process.env.NODE_ENV === 'production' 
-        ? { rejectUnauthorized: true }  // Production should use proper CA cert
-        : { rejectUnauthorized: false }; // Development
-    }
-  } else if (isRenderDatabase) {
-    // Render Postgres databases require SSL
-    sslConfig = { rejectUnauthorized: false };
-  } else if (process.env.NODE_ENV === 'production') {
-    // Other production databases should use SSL
-    sslConfig = { rejectUnauthorized: false };
+  if (awsRdsCertPath && fs.existsSync(awsRdsCertPath)) {
+    sslConfig = {
+      rejectUnauthorized: true,
+      ca: fs.readFileSync(awsRdsCertPath).toString(),
+    };
+  } else {
+    // Option 2: Accept self-signed certificates (for development/testing)
+    // For production, download AWS RDS CA bundle from:
+    // https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+    sslConfig = process.env.NODE_ENV === 'production' 
+      ? { rejectUnauthorized: true }  // Production should use proper CA cert
+      : { rejectUnauthorized: false }; // Development
   }
 
   const poolConfig = {
