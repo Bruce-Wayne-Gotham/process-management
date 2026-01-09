@@ -7,7 +7,7 @@ import Button from '../components/Button';
 export default function ManualSetupPage() {
   const [copied, setCopied] = React.useState(false);
 
-  const sqlScript = `-- Run this in Supabase SQL Editor
+  const sqlScript = `-- Run this in your AWS RDS PostgreSQL client
 
 -- ==============
 -- Tables
@@ -199,34 +199,33 @@ INSERT INTO purchases (farmer_id, purchase_date, packaging_type, process_weight,
   return (
     <Layout>
       <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-        <Card title="🛠️ Manual Database Setup">
+        <Card title="[S] Manual Database Setup">
           <div style={{ marginBottom: '2rem' }}>
             <h3 style={{ color: '#374151', marginBottom: '1rem' }}>Quick Setup Instructions</h3>
             <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '0.5rem', padding: '1.5rem', marginBottom: '2rem' }}>
               <ol style={{ color: '#166534', lineHeight: '1.8', paddingLeft: '1.5rem', margin: 0 }}>
-                <li><strong>Go to Supabase Dashboard:</strong> <a href="https://supabase.com/dashboard" target="_blank" style={{ color: '#059669', textDecoration: 'underline' }}>https://supabase.com/dashboard</a></li>
-                <li><strong>Navigate to your project:</strong> wueblvkoukloirisuoju</li>
-                <li><strong>Click "SQL Editor"</strong> in the left sidebar</li>
-                <li><strong>Copy the SQL script below</strong> and paste it in the editor</li>
-                <li><strong>Click "Run"</strong> to execute the script</li>
-                <li><strong>Come back and test:</strong> <a href="/farmers" style={{ color: '#059669', textDecoration: 'underline' }}>Visit Farmers Page</a></li>
+                <li><strong>Connect to AWS RDS:</strong> Use psql or a PostgreSQL client with your RDS endpoint</li>
+                <li><strong>Select the tobacco_tracker database:</strong> psql -h [RDS-ENDPOINT] -U postgres -d tobacco_tracker</li>
+                <li><strong>Copy the SQL script below</strong> and paste it in your client</li>
+                <li><strong>Execute the script</strong> to set up tables and seed data</li>
+                <li><strong>Test the connection:</strong> <a href="/farmers" style={{ color: '#059669', textDecoration: 'underline' }}>Visit Farmers Page</a></li>
               </ol>
             </div>
 
             <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
               <Button variant="primary" onClick={copyToClipboard}>
-                {copied ? '✅ Copied!' : '📋 Copy SQL Script'}
+                [C] Copy SQL Script
               </Button>
               <Button 
                 variant="secondary" 
-                onClick={() => window.open('https://supabase.com/dashboard', '_blank')}
+                onClick={() => window.open('https://aws.amazon.com/rds/', '_blank')}
               >
-                🚀 Open Supabase Dashboard
+                [A] AWS RDS Info
               </Button>
             </div>
           </div>
 
-          <Card title="📝 SQL Script">
+          <Card title="[SQL] Script">
             <pre style={{
               backgroundColor: '#1f2937',
               color: '#f9fafb',
