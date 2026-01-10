@@ -10,7 +10,7 @@ class DatabaseService {
     // Parse DATABASE_URL or use individual env vars
     const dbUrl = process.env.DATABASE_URL;
     if (dbUrl) {
-      this.config = { connectionString: dbUrl, ssl: false };
+      this.config = { connectionString: dbUrl, ssl: { rejectUnauthorized: false } };
     } else {
       this.config = {
         host: process.env.DB_HOST || 'tobacco-tracker.cpqikwg4izyj.ap-southeast-2.rds.amazonaws.com',
@@ -18,7 +18,7 @@ class DatabaseService {
         user: process.env.DB_USER || 'postgres',
         password: process.env.DB_PASSWORD || 'ganeshbagh501',
         database: process.env.DB_NAME || 'tobacco_tracker',
-        ssl: false
+        ssl: { rejectUnauthorized: false }
       };
     }
   }
@@ -117,6 +117,7 @@ class DatabaseService {
     if (!this.pool) {
       this.pool = new Pool({
         ...this.config,
+        ssl: { rejectUnauthorized: false },
         max: 5,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 7000
