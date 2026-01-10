@@ -35,9 +35,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
-# Copy database schema and setup scripts
+# Copy database schema and setup scripts from parent context
 COPY sql ./sql
-COPY render-setup ./render-setup
 
 # Install pg client for the automated pre-deploy setup script
 RUN npm install pg --no-save
