@@ -135,6 +135,20 @@ CREATE TABLE IF NOT EXISTS farmer_efficacy (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
+-- users and authentication
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  username VARCHAR(50) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  role VARCHAR(20) NOT NULL CHECK (role IN ('owner', 'manager')),
+  full_name VARCHAR(100),
+  email VARCHAR(100),
+  permissions TEXT[],
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  last_login TIMESTAMP WITH TIME ZONE
+);
+
 -- process_status_history
 CREATE TABLE IF NOT EXISTS process_status_history (
   id SERIAL PRIMARY KEY,
@@ -155,6 +169,12 @@ INSERT INTO process_status (status_code, label, description) VALUES
 ('ON_HOLD', 'On Hold', 'Process is temporarily paused'),
 ('CANCELLED', 'Cancelled', 'Process has been cancelled')
 ON CONFLICT (status_code) DO NOTHING;
+
+-- Insert default users (password: admin123)
+INSERT INTO users (username, password_hash, role, full_name) VALUES
+('owner', 'admin123', 'owner', 'Owner Admin'),
+('manager', 'admin123', 'manager', 'Manager User')
+ON CONFLICT (username) DO NOTHING;
 
 -- 📈 STEP 3: INDEXES
 
@@ -177,6 +197,7 @@ ALTER TABLE process ENABLE ROW LEVEL SECURITY;
 ALTER TABLE jardi_output ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE farmer_efficacy ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE process_status ENABLE ROW LEVEL SECURITY;
 ALTER TABLE process_status_history ENABLE ROW LEVEL SECURITY;
 
@@ -206,6 +227,9 @@ BEGIN
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow all operations on farmer_efficacy') THEN
         CREATE POLICY "Allow all operations on farmer_efficacy" ON farmer_efficacy FOR ALL USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow all operations on users') THEN
+        CREATE POLICY "Allow all operations on users" ON users FOR ALL USING (true);
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow all operations on process_status') THEN
         CREATE POLICY "Allow all operations on process_status" ON process_status FOR ALL USING (true);

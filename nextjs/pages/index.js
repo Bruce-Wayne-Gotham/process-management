@@ -4,8 +4,12 @@ import Layout from '../components/Layout';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Link from 'next/link';
+import { requireAuth } from '../lib/auth';
 
 export default function Home() {
+  React.useEffect(() => {
+    requireAuth();
+  }, []);
   const [stats, setStats] = React.useState([
     { label: 'Total Farmers', value: '0', icon: '👨‍🌾', color: '#3b82f6' },
     { label: 'Active Purchases', value: '0', icon: '🧾', color: '#10b981' },

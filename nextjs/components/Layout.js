@@ -1,19 +1,30 @@
 'use client';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { getUser, logout, hasPermission } from '../lib/auth';
+import { useState, useEffect } from 'react';
 
 export default function Layout({ children }) {
   const router = useRouter();
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    setUser(getUser());
+  }, []);
 
   const navItems = [
     { href: '/', label: 'Dashboard', icon: '[D]' },
-    { href: '/farmers', label: 'Farmers', icon: '[F]' },
-    { href: '/purchases', label: 'Purchases', icon: '[P]' },
-    { href: '/lots', label: 'Lots', icon: '[L]' },
-    { href: '/process', label: 'Process', icon: '[PR]' },
-    { href: '/payments', label: 'Payments', icon: '[PA]' },
-    { href: '/manual-setup', label: 'Setup Database', icon: '[S]' }
-  ];
+    { href: '/farmers', label: 'Farmers', icon: '[F]', permission: 'farmers' },
+    { href: '/purchases', label: 'Purchases', icon: '[P]', permission: 'purchases' },
+    { href: '/lots', label: 'Lots', icon: '[L]', permission: 'lots' },
+    { href: '/process', label: 'Process', icon: '[PR]', permission: 'process' },
+    { href: '/payments', label: 'Payments', icon: '[PA]', permission: 'payments' },
+    { href: '/manual-setup', label: 'Setup Database', icon: '[S]' },
+    ...(user?.role === 'owner' ? [
+      { href: '/manage-users', label: 'Manage Users', icon: '[MU]' },
+      { href: '/change-password', label: 'Change Password', icon: '[CP]' }
+    ] : [])
+  ].filter(item => !item.permission || hasPermission(item.permission));
 
   const isActive = (href) => {
     if (href === '/') return router.pathname === '/';
@@ -32,35 +43,68 @@ export default function Layout({ children }) {
         top: 0,
         zIndex: 100
       }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <h1 style={{ margin: 0, fontSize: 'clamp(1.2rem, 4vw, 1.5rem)', fontWeight: 'bold' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button 
+              onClick={() => {
+                const nav = document.getElementById('mobile-nav');
+                const overlay = document.getElementById('nav-overlay');
+                nav.style.transform = 'translateX(0)';
+                overlay.style.display = 'block';
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'white',
+                fontSize: '1.5rem',
+                cursor: 'pointer',
+                padding: '0.25rem',
+                display: 'none'
+              }}
+              className="mobile-menu-btn"
+            >
+              ☰
+            </button>
+            <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 'bold' }}>
               Tobacco Tracker
             </h1>
-            <div style={{ fontSize: 'clamp(0.8rem, 2vw, 0.9rem)', opacity: 0.8 }}>
-              Process Management System
-            </div>
           </div>
-          {/* Mobile menu button */}
-          <button 
-            onClick={() => {
-              const nav = document.getElementById('mobile-nav');
-              nav.style.display = nav.style.display === 'flex' ? 'none' : 'flex';
-            }}
-            style={{
-              display: 'none',
-              background: 'none',
-              border: 'none',
-              color: 'white',
-              fontSize: '1.5rem',
-              cursor: 'pointer',
-              padding: '0.5rem'
-            }}
-          >
-            ☰
-          </button>
+          {user && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span className="user-name" style={{ display: 'none' }}>{user.fullName || user.username}</span>
+                <span style={{ padding: '0.25rem 0.5rem', backgroundColor: user.role === 'owner' ? '#ef4444' : '#3b82f6', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: '600' }}>
+                  {user.role.toUpperCase()}
+                </span>
+              </div>
+              <button onClick={logout} style={{ padding: '0.5rem 0.75rem', backgroundColor: '#dc2626', border: 'none', borderRadius: '0.25rem', color: 'white', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '500' }}>
+                Logout
+              </button>
+            </div>
+          )}
         </div>
       </header>
+
+      {/* Overlay */}
+      <div 
+        id="nav-overlay"
+        onClick={() => {
+          const nav = document.getElementById('mobile-nav');
+          const overlay = document.getElementById('nav-overlay');
+          nav.style.transform = 'translateX(-100%)';
+          overlay.style.display = 'none';
+        }}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'none',
+          zIndex: 150
+        }}
+      />
 
       <div style={{ display: 'flex', maxWidth: '1200px', margin: '0 auto', flexDirection: 'row' }}>
         {/* Sidebar Navigation */}
@@ -73,7 +117,8 @@ export default function Layout({ children }) {
           position: 'sticky',
           top: '80px',
           height: 'calc(100vh - 80px)',
-          overflowY: 'auto'
+          overflowY: 'auto',
+          transition: 'transform 0.3s ease'
         }}>
           <div style={{ padding: '0 1rem', marginBottom: '1rem' }}>
             <h3 style={{ margin: 0, fontSize: '0.9rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -83,28 +128,36 @@ export default function Layout({ children }) {
           
           {navItems.map((item) => (
             <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '0.75rem 1rem',
-                margin: '0.25rem 1rem',
-                borderRadius: '0.5rem',
-                color: isActive(item.href) ? '#1e293b' : '#64748b',
-                backgroundColor: isActive(item.href) ? '#f1f5f9' : 'transparent',
-                fontWeight: isActive(item.href) ? '600' : '400',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive(item.href)) {
-                  e.target.style.backgroundColor = '#f8fafc';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive(item.href)) {
-                  e.target.style.backgroundColor = 'transparent';
-                }
-              }}>
+              <div 
+                onClick={() => {
+                  const nav = document.getElementById('mobile-nav');
+                  const overlay = document.getElementById('nav-overlay');
+                  nav.style.transform = 'translateX(-100%)';
+                  overlay.style.display = 'none';
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '0.875rem 1rem',
+                  margin: '0.25rem 1rem',
+                  borderRadius: '0.5rem',
+                  color: isActive(item.href) ? '#1e293b' : '#64748b',
+                  backgroundColor: isActive(item.href) ? '#f1f5f9' : 'transparent',
+                  fontWeight: isActive(item.href) ? '600' : '400',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontSize: '0.95rem'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive(item.href)) {
+                    e.currentTarget.style.backgroundColor = '#f8fafc';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive(item.href)) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
+                }}>
                 <span style={{ marginRight: '0.75rem', fontSize: '1.1rem' }}>
                   {item.icon}
                 </span>
@@ -117,9 +170,10 @@ export default function Layout({ children }) {
         {/* Main Content */}
         <main style={{
           flex: 1,
-          padding: '1rem',
+          padding: '1.5rem',
           backgroundColor: '#f8fafc',
-          overflowX: 'auto'
+          overflowX: 'auto',
+          minHeight: 'calc(100vh - 80px)'
         }}>
           {children}
         </main>
@@ -128,38 +182,34 @@ export default function Layout({ children }) {
       {/* Mobile Responsive Styles */}
       <style jsx>{`
         @media (max-width: 768px) {
-          header button {
+          .mobile-menu-btn {
             display: block !important;
+          }
+          
+          .user-name {
+            display: none !important;
           }
           
           #mobile-nav {
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
-            width: 100% !important;
+            width: 280px !important;
             height: 100vh !important;
             z-index: 200 !important;
-            display: none !important;
-            background-color: white !important;
-            border-right: none !important;
-          }
-          
-          #mobile-nav.show {
-            display: flex !important;
+            transform: translateX(-100%);
+            box-shadow: 2px 0 8px rgba(0,0,0,0.15);
           }
           
           main {
             padding: 1rem !important;
-          }
-          
-          div[style*="flex-direction: row"] {
-            flex-direction: column !important;
+            width: 100% !important;
           }
         }
         
-        @media (max-width: 1024px) {
-          nav {
-            width: 200px !important;
+        @media (min-width: 769px) {
+          .user-name {
+            display: inline !important;
           }
         }
         
@@ -168,8 +218,16 @@ export default function Layout({ children }) {
             padding: 0.75rem !important;
           }
           
+          header h1 {
+            font-size: 1.1rem !important;
+          }
+          
           main {
             padding: 0.75rem !important;
+          }
+          
+          #mobile-nav {
+            width: 260px !important;
           }
         }
       `}</style>
