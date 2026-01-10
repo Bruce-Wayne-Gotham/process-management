@@ -76,12 +76,12 @@ class DatabaseService {
       if (tableCount === 0) {
         console.log('[DB] Creating schema...');
         
-        const schemaPath = path.join(__dirname, '../sql/schema.sql');
+        const schemaPath = path.join(process.cwd(), 'sql/schema.sql');
         const schema = fs.readFileSync(schemaPath, 'utf8');
         await client.query(schema);
         console.log('[DB] ✅ Schema created');
 
-        const seedPath = path.join(__dirname, '../sql/seed_data.sql');
+        const seedPath = path.join(process.cwd(), 'sql/seed_data.sql');
         const seed = fs.readFileSync(seedPath, 'utf8');
         await client.query(seed);
         console.log('[DB] ✅ Seed data inserted');
