@@ -1,9 +1,9 @@
 #!/bin/sh
 set -e
 
-echo "🔄 Checking database..."
+echo "🔄 Initializing database schema..."
 
-# Run database initialization
+# Run database initialization - only creates tables if they don't exist
 node -e "
 const { Client } = require('pg');
 const fs = require('fs');
@@ -14,22 +14,16 @@ async function init() {
     await client.connect();
     console.log('✅ Connected to database');
     
-    // Check if users table exists
-    const check = await client.query(\"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users')\");
-    
-    if (!check.rows[0].exists) {
-      console.log('📦 Initializing database...');
-      const sql = fs.readFileSync('./INITIALIZE_DATABASE.sql', 'utf8');
-      await client.query(sql);
-      console.log('✅ Database initialized');
-    } else {
-      console.log('✅ Database already initialized');
-    }
+    // Run initialization SQL (uses CREATE TABLE IF NOT EXISTS)
+    const sql = fs.readFileSync('./INITIALIZE_DATABASE.sql', 'utf8');
+    await client.query(sql);
+    console.log('✅ Database schema verified');
     
     await client.end();
   } catch (err) {
-    console.error('❌ Database error:', err.message);
+    console.error('❌ Database initialization error:', err.message);
     await client.end();
+    process.exit(1);
   }
 }
 

@@ -38,11 +38,10 @@ COPY --from=builder /app/package.json ./package.json
 # Copy database schema and setup scripts from parent context
 COPY sql ./sql
 COPY INITIALIZE_DATABASE.sql ./INITIALIZE_DATABASE.sql
-COPY nextjs/start.sh ./start.sh
 
 # Install pg client for the automated pre-deploy setup script
-RUN npm install pg --no-save && chmod +x ./start.sh
+RUN npm install pg --no-save
 
 EXPOSE 3000
-# Start the app with initialization
-CMD ["./start.sh"]
+# Start the app
+CMD ["npm", "start"]
