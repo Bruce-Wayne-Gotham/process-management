@@ -30,6 +30,7 @@ class DatabaseService {
     } else {
       config.database = 'postgres';
     }
+    config.ssl = { rejectUnauthorized: false };
 
     const client = new Client(config);
 
@@ -58,7 +59,9 @@ class DatabaseService {
   }
 
   async ensureTablesExist() {
-    const client = new Client(this.config);
+    const config = { ...this.config };
+    config.ssl = { rejectUnauthorized: false };
+    const client = new Client(config);
 
     try {
       await client.connect();
