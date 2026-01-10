@@ -204,9 +204,11 @@ export default function LotsPage() {
                       {lot.remarks || '-'}
                     </td>
                     <td style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>
-                      <Button variant="outline" size="sm">
-                        👁️ View
-                      </Button>
+                      <Link href={`/lots/${lot.id}`} style={{ textDecoration: 'none' }}>
+                        <Button variant="outline" size="sm">
+                          👁️ View
+                        </Button>
+                      </Link>
                     </td>
                   </tr>
                 ))}
