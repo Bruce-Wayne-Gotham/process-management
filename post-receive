@@ -1,0 +1,28 @@
+#!/bin/bash
+TARGET="/home/ec2-user/tobacco-tracker"
+GIT_DIR="/home/ec2-user/tobacco-tracker.git"
+
+echo "🚀 Post-receive hook triggered. Deploying to $TARGET..."
+
+# 1. Checkout the latest code
+mkdir -p $TARGET
+git --work-tree=$TARGET --git-dir=$GIT_DIR checkout -f
+
+# 2. Go to the target directory
+cd $TARGET
+
+# 3. Setup environment variables if not exist
+if [ ! -f .env ]; then
+    if [ -f .env.production ]; then
+        cp .env.production .env
+        echo "✅ Created .env from .env.production"
+    else
+        echo "⚠️  WARNING: .env.production not found. Make sure to create a .env file."
+    fi
+fi
+
+# 4. Deploy with Docker Compose
+echo "🏗️ Building and starting containers..."
+sudo docker-compose up -d --build
+
+echo "✅ Deployment complete!"

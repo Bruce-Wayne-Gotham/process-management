@@ -1,16 +1,7 @@
-import dbService from '../../lib/dbService';
-
-let initAttempted = false;
+const dbService = require('../../lib/dbService');
 
 export default async function handler(req, res) {
   try {
-    // Auto-initialize database on first health check
-    if (!initAttempted) {
-      initAttempted = true;
-      console.log('[Health] Initializing database...');
-      await dbService.initialize();
-    }
-
     const dbUrl = process.env.DATABASE_URL;
     const hasDatabaseUrl = !!dbUrl;
 
@@ -19,8 +10,7 @@ export default async function handler(req, res) {
       timestamp: new Date().toISOString(),
       environment: {
         nodeEnv: process.env.NODE_ENV,
-        hasDatabaseUrl: hasDatabaseUrl,
-        databaseUrlLength: hasDatabaseUrl ? dbUrl.length : 0
+        hasDatabaseUrl: hasDatabaseUrl
       },
       endpoints: {
         farmers: '/api/farmers',
@@ -32,23 +22,17 @@ export default async function handler(req, res) {
     };
 
     if (hasDatabaseUrl) {
-      const dbUrlMasked = dbUrl.replace(/:([^:@]+)@/, ':****@');
-      response.environment.databaseUrlMasked = dbUrlMasked;
-
       try {
-        console.log('[Health] Testing database connection...');
         const result = await dbService.query('SELECT NOW() as current_time');
         response.database = {
           connected: true,
           serverTime: result.rows[0]?.current_time,
-          status: 'connected'
+          initialized: dbService.initialized
         };
       } catch (dbError) {
-        console.error('[Health] Database error:', dbError.message);
         response.database = {
           connected: false,
-          error: dbError.message,
-          code: dbError.code
+          error: dbError.message
         };
       }
     } else {
@@ -62,8 +46,7 @@ export default async function handler(req, res) {
   } catch (error) {
     return res.status(500).json({
       status: 'error',
-      message: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      message: error.message
     });
   }
 }

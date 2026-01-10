@@ -6,47 +6,52 @@ class DatabaseService {
   constructor() {
     this.pool = null;
     this.initialized = false;
-    this.config = {
-      host: process.env.DB_HOST || 'tobacco-tracker.cpqikwg4izyj.ap-southeast-2.rds.amazonaws.com',
-      port: parseInt(process.env.DB_PORT || '5432'),
-      user: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASSWORD || 'ganeshbagh501',
-      database: process.env.DB_NAME || 'tobacco_tracker',
-      ssl: false,
-      connectionTimeoutMillis: 7000,
-      idleTimeoutMillis: 30000,
-      max: 5,
-      min: 0
-    };
+    
+    // Parse DATABASE_URL or use individual env vars
+    const dbUrl = process.env.DATABASE_URL;
+    if (dbUrl) {
+      this.config = { connectionString: dbUrl, ssl: false };
+    } else {
+      this.config = {
+        host: process.env.DB_HOST || 'tobacco-tracker.cpqikwg4izyj.ap-southeast-2.rds.amazonaws.com',
+        port: parseInt(process.env.DB_PORT || '5432'),
+        user: process.env.DB_USER || 'postgres',
+        password: process.env.DB_PASSWORD || 'ganeshbagh501',
+        database: process.env.DB_NAME || 'tobacco_tracker',
+        ssl: false
+      };
+    }
   }
 
   async ensureDatabaseExists() {
-    const client = new Client({
-      ...this.config,
-      database: 'postgres'
-    });
+    const config = { ...this.config };
+    if (config.connectionString) {
+      config.connectionString = config.connectionString.replace(/\/[^/]+(\?|$)/, '/postgres$1');
+    } else {
+      config.database = 'postgres';
+    }
+
+    const client = new Client(config);
 
     try {
       await client.connect();
-      console.log('[DB Service] Connected to PostgreSQL server');
+      console.log('[DB] Connected to PostgreSQL server');
 
-      const result = await client.query(
-        "SELECT 1 FROM pg_database WHERE datname = $1",
-        [this.config.database]
-      );
+      const dbName = this.config.database || 'tobacco_tracker';
+      const result = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [dbName]);
 
       if (result.rows.length === 0) {
-        console.log(`[DB Service] Creating database ${this.config.database}...`);
-        await client.query(`CREATE DATABASE ${this.config.database}`);
-        console.log('[DB Service] ✅ Database created');
+        console.log(`[DB] Creating database ${dbName}...`);
+        await client.query(`CREATE DATABASE ${dbName}`);
+        console.log('[DB] ✅ Database created');
       } else {
-        console.log('[DB Service] Database already exists');
+        console.log('[DB] Database exists');
       }
 
       await client.end();
       return true;
     } catch (error) {
-      console.error('[DB Service] Error ensuring database exists:', error.message);
+      console.error('[DB] Error ensuring database:', error.message);
       if (client) await client.end().catch(() => {});
       throw error;
     }
@@ -57,7 +62,7 @@ class DatabaseService {
 
     try {
       await client.connect();
-      console.log('[DB Service] Connected to database');
+      console.log('[DB] Connected to database');
 
       const tableCheck = await client.query(
         "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = 'public'"
@@ -66,25 +71,25 @@ class DatabaseService {
       const tableCount = parseInt(tableCheck.rows[0].count);
 
       if (tableCount === 0) {
-        console.log('[DB Service] No tables found, running schema...');
+        console.log('[DB] Creating schema...');
         
         const schemaPath = path.join(__dirname, '../sql/schema.sql');
         const schema = fs.readFileSync(schemaPath, 'utf8');
         await client.query(schema);
-        console.log('[DB Service] ✅ Schema created');
+        console.log('[DB] ✅ Schema created');
 
         const seedPath = path.join(__dirname, '../sql/seed_data.sql');
         const seed = fs.readFileSync(seedPath, 'utf8');
         await client.query(seed);
-        console.log('[DB Service] ✅ Seed data inserted');
+        console.log('[DB] ✅ Seed data inserted');
       } else {
-        console.log(`[DB Service] Found ${tableCount} tables, skipping initialization`);
+        console.log(`[DB] Tables exist (${tableCount} found)`);
       }
 
       await client.end();
       return true;
     } catch (error) {
-      console.error('[DB Service] Error ensuring tables exist:', error.message);
+      console.error('[DB] Error ensuring tables:', error.message);
       if (client) await client.end().catch(() => {});
       throw error;
     }
@@ -92,40 +97,43 @@ class DatabaseService {
 
   async initialize() {
     if (this.initialized) {
-      console.log('[DB Service] Already initialized');
       return true;
     }
 
     try {
+      console.log('[DB] Starting initialization...');
       await this.ensureDatabaseExists();
       await this.ensureTablesExist();
       this.initialized = true;
-      console.log('[DB Service] ✅ Initialization complete');
+      console.log('[DB] ✅ Initialization complete');
       return true;
     } catch (error) {
-      console.error('[DB Service] Initialization failed:', error.message);
+      console.error('[DB] Initialization failed:', error.message);
       return false;
     }
   }
 
   getPool() {
     if (!this.pool) {
-      this.pool = new Pool(this.config);
+      this.pool = new Pool({
+        ...this.config,
+        max: 5,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 7000
+      });
+      
       this.pool.on('error', (err) => {
-        console.error('[DB Service] Pool error:', err.message);
+        console.error('[DB] Pool error:', err.message);
       });
     }
     return this.pool;
   }
 
   async query(text, params) {
-    try {
-      const result = await this.getPool().query(text, params);
-      return result;
-    } catch (error) {
-      console.error('[DB Service] Query error:', error.message);
-      throw error;
+    if (!this.initialized) {
+      await this.initialize();
     }
+    return this.getPool().query(text, params);
   }
 
   async close() {
@@ -133,11 +141,8 @@ class DatabaseService {
       await this.pool.end();
       this.pool = null;
       this.initialized = false;
-      console.log('[DB Service] Connection pool closed');
     }
   }
 }
 
-const dbService = new DatabaseService();
-
-module.exports = dbService;
+module.exports = new DatabaseService();

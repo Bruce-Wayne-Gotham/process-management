@@ -1,9 +1,7 @@
-import dbService from '../../lib/dbService';
+const dbService = require('../../lib/dbService');
 
 export default async function handler(req, res) {
   try {
-    await dbService.initialize();
-    
     if (req.method === 'GET') {
       const result = await dbService.query('SELECT * FROM farmers ORDER BY created_at DESC');
       return res.status(200).json(result.rows || []);
@@ -41,6 +39,7 @@ export default async function handler(req, res) {
     res.setHeader('Allow', ['GET', 'POST']);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   } catch (err) {
+    console.error('[API] Error:', err.message);
     if (err && err.code === '23505') {
       return res.status(409).json({ error: 'farmer_code already exists' });
     }
