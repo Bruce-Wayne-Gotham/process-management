@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS process (
   kadi_mati_weight DECIMAL(10,2) DEFAULT 0,
   dhas_weight DECIMAL(10,2) DEFAULT 0,
   total_wastage_weight DECIMAL(10,2) GENERATED ALWAYS AS (kadi_mati_weight + dhas_weight) STORED,
-  net_loss_weight DECIMAL(10,2) GENERATED ALWAYS AS (input_weight - total_wastage_weight) STORED,
+  net_loss_weight DECIMAL(10,2) GENERATED ALWAYS AS (input_weight - (kadi_mati_weight + dhas_weight)) STORED,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
