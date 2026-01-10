@@ -24,17 +24,18 @@ function createPool() {
     throw new Error('DATABASE_URL is not defined');
   }
 
-  // Basic SSL config - disabled strict checking to avoid common RDS/Render handshake issues
-  const sslConfig = { rejectUnauthorized: false };
-
   console.log('[DB] Creating connection pool for', connectionString.split('@')[1] || 'URL');
 
   return new Pool({
     connectionString,
-    ssl: sslConfig,
-    connectionTimeoutMillis: 5000, // 5 seconds to connect or fail
-    idleTimeoutMillis: 10000,
-    max: 10
+    ssl: false, // Disabled SSL for RDS connection
+    connectionTimeoutMillis: 7000,
+    idleTimeoutMillis: 30000,
+    query_timeout: 20000,
+    max: 5,
+    min: 0,
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10000
   });
 }
 

@@ -1,11 +1,16 @@
-import { query } from '../../lib/db';
-import { initializeDatabase } from '../../lib/initDb';
+import dbService from '../../lib/dbService';
 
-let dbInitialized = false;
+let initAttempted = false;
 
 export default async function handler(req, res) {
   try {
-    // Check if DATABASE_URL is set
+    // Auto-initialize database on first health check
+    if (!initAttempted) {
+      initAttempted = true;
+      console.log('[Health] Initializing database...');
+      await dbService.initialize();
+    }
+
     const dbUrl = process.env.DATABASE_URL;
     const hasDatabaseUrl = !!dbUrl;
 
@@ -26,49 +31,25 @@ export default async function handler(req, res) {
       }
     };
 
-    // Try to query the database
     if (hasDatabaseUrl) {
       const dbUrlMasked = dbUrl.replace(/:([^:@]+)@/, ':****@');
       response.environment.databaseUrlMasked = dbUrlMasked;
 
       try {
-        console.log('[Health] Attempting database ping...');
-        const result = await query('SELECT NOW() as current_time');
+        console.log('[Health] Testing database connection...');
+        const result = await dbService.query('SELECT NOW() as current_time');
         response.database = {
           connected: true,
           serverTime: result.rows[0]?.current_time,
-          status: 'reachable'
+          status: 'connected'
         };
       } catch (dbError) {
-        console.error('[Health] Database ping failed:', dbError.message);
-        
-        // Auto-initialize database if it doesn't exist
-        if (!dbInitialized && (dbError.message.includes('does not exist') || dbError.code === '3D000')) {
-          console.log('[Health] Attempting to initialize database...');
-          dbInitialized = await initializeDatabase();
-          
-          if (dbInitialized) {
-            const retryResult = await query('SELECT NOW() as current_time');
-            response.database = {
-              connected: true,
-              serverTime: retryResult.rows[0]?.current_time,
-              status: 'initialized and connected'
-            };
-          } else {
-            response.database = {
-              connected: false,
-              error: 'Failed to initialize database',
-              originalError: dbError.message
-            };
-          }
-        } else {
-          response.database = {
-            connected: false,
-            error: dbError.message,
-            code: dbError.code,
-            hint: 'Check AWS RDS Security Group inbound rules and sslmode'
-          };
-        }
+        console.error('[Health] Database error:', dbError.message);
+        response.database = {
+          connected: false,
+          error: dbError.message,
+          code: dbError.code
+        };
       }
     } else {
       response.database = {
