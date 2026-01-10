@@ -1,4 +1,7 @@
 import { query } from '../../lib/db';
+import { initializeDatabase } from '../../lib/initDb';
+
+let dbInitialized = false;
 
 export default async function handler(req, res) {
   try {
@@ -38,12 +41,34 @@ export default async function handler(req, res) {
         };
       } catch (dbError) {
         console.error('[Health] Database ping failed:', dbError.message);
-        response.database = {
-          connected: false,
-          error: dbError.message,
-          code: dbError.code,
-          hint: 'Check AWS RDS Security Group inbound rules (0.0.0.0/0) and sslmode=require'
-        };
+        
+        // Auto-initialize database if it doesn't exist
+        if (!dbInitialized && (dbError.message.includes('does not exist') || dbError.code === '3D000')) {
+          console.log('[Health] Attempting to initialize database...');
+          dbInitialized = await initializeDatabase();
+          
+          if (dbInitialized) {
+            const retryResult = await query('SELECT NOW() as current_time');
+            response.database = {
+              connected: true,
+              serverTime: retryResult.rows[0]?.current_time,
+              status: 'initialized and connected'
+            };
+          } else {
+            response.database = {
+              connected: false,
+              error: 'Failed to initialize database',
+              originalError: dbError.message
+            };
+          }
+        } else {
+          response.database = {
+            connected: false,
+            error: dbError.message,
+            code: dbError.code,
+            hint: 'Check AWS RDS Security Group inbound rules and sslmode'
+          };
+        }
       }
     } else {
       response.database = {
