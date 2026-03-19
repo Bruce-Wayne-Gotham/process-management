@@ -35,13 +35,12 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
-# Copy database schema and setup scripts from parent context
-COPY sql ./sql
-COPY INITIALIZE_DATABASE.sql ./INITIALIZE_DATABASE.sql
-
-# Install pg client for the automated pre-deploy setup script
-RUN npm install pg --no-save
+# Copy MongoDB setup script from parent context
+COPY setup-mongodb.js ./setup-mongodb.js
 
 EXPOSE 3000
-# Start the app
-CMD ["npm", "start"]
+
+# Start script that initializes MongoDB then starts the app
+RUN echo '#!/bin/bash\nset -e\necho "⏳ Waiting for MongoDB to be ready..."\nnode setup-mongodb.js\necho "✅ MongoDB initialized"\nnpm start' > /app/start-with-mongo.sh && chmod +x /app/start-with-mongo.sh
+
+CMD ["/app/start-with-mongo.sh"]

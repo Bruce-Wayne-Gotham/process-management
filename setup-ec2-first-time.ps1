@@ -2,7 +2,7 @@
 # Usage: .\setup-ec2-first-time.ps1
 
 $PemPath = "process.pem"
-$EC2_IP = "3.24.232.53"
+$EC2_IP = "3.106.208.112"
 $User = "ec2-user"
 
 Write-Host "🚀 First Time EC2 Setup..." -ForegroundColor Cyan
