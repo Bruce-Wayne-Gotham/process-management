@@ -1,4 +1,4 @@
-import { query } from '../../../lib/db';
+import { query } from '../../../lib/mongoDb';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -17,12 +17,12 @@ export default async function handler(req, res) {
 
   try {
     // For simplicity, storing plain password (in production, use bcrypt)
-    const result = await query(
-      'UPDATE users SET password_hash = $1 WHERE username = $2 RETURNING id, username',
-      [newPassword, targetUsername]
-    );
+    const result = await query('users', 'updateOne', {
+      filter: { username: targetUsername },
+      update: { password_hash: newPassword }
+    });
 
-    if (result.rows.length === 0) {
+    if (result.modifiedCount === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
 

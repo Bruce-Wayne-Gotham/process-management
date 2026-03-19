@@ -1,4 +1,4 @@
-const dbService = require('../../lib/dbService');
+const { query } = require('../../lib/mongoDb');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -12,16 +12,11 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const result = await dbService.query(
-      'SELECT * FROM users WHERE username = $1 AND role = $2 AND is_active = true',
-      [username, role]
-    );
+    const user = await query('users', 'findOne', { username, role, is_active: true });
 
-    if (result.rows.length === 0) {
+    if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-
-    const user = result.rows[0];
 
     // Simple password check (in production, use bcrypt)
     if (password !== 'admin123') {
@@ -29,15 +24,15 @@ module.exports = async (req, res) => {
     }
 
     // Update last login
-    await dbService.query(
-      'UPDATE users SET last_login = now() WHERE id = $1',
-      [user.id]
-    );
+    await query('users', 'updateOne', {
+      filter: { _id: user._id },
+      update: { last_login: new Date() }
+    });
 
     return res.status(200).json({
       success: true,
       user: {
-        id: user.id,
+        id: user._id.toString(),
         username: user.username,
         role: user.role,
         full_name: user.full_name

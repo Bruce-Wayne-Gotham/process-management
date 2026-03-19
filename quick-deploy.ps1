@@ -22,16 +22,10 @@ git push origin main
 
 # Deploy to EC2
 Write-Host "`n🔄 Pulling and redeploying on EC2..." -ForegroundColor Yellow
-$commands = @"
-cd ~/tobacco-tracker && \
-git pull origin main && \
-docker compose down && \
-docker compose up -d --build && \
-echo '✅ Deployment complete!' && \
-docker compose ps
-"@
+$commands = 'cd ~/tobacco-tracker; git pull origin main; docker compose down; docker compose up -d --build; echo Deployment complete; docker compose ps'
 
-ssh -i $PemPath "${User}@${EC2_IP}" $commands
+$remoteUser = "$User@$EC2_IP"
+ssh -i $PemPath $remoteUser $commands
 
 Write-Host "`n✅ Done!" -ForegroundColor Green
 Write-Host "🌐 App: http://$EC2_IP" -ForegroundColor Cyan
