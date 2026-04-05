@@ -1,7 +1,10 @@
 export default {
   async fetch(request, env) {
     if (env.ASSETS) {
-      return env.ASSETS.fetch(request);
+      const assetResponse = await env.ASSETS.fetch(request);
+      if (assetResponse.status !== 404) {
+        return assetResponse;
+      }
     }
 
     return new Response('Tobacco Tracker Worker is deployed.', {
