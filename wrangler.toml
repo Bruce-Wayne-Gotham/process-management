@@ -6,3 +6,7 @@ workers_dev = true
 [assets]
 directory = "./nextjs/.next/static"
 binding = "ASSETS"
+
+[vars]
+# Set this to your deployed Next.js origin (for example, https://your-app.onrender.com)
+APP_ORIGIN = ""
