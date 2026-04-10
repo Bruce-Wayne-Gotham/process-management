@@ -1,15 +1,16 @@
 export default {
   async fetch(request, env) {
-    if (env.ASSETS) {
-      const assetResponse = await env.ASSETS.fetch(request);
-      if (assetResponse.status !== 404) {
-        return assetResponse;
-      }
-    }
+    const origin = env.ORIGIN_URL || 'https://process-management-4t4o.onrender.com';
+    const requestUrl = new URL(request.url);
+    const originUrl = new URL(origin);
 
-    return new Response('Tobacco Tracker Worker is deployed.', {
-      status: 200,
-      headers: { 'content-type': 'text/plain; charset=utf-8' },
-    });
+    originUrl.pathname = requestUrl.pathname;
+    originUrl.search = requestUrl.search;
+
+    const proxyRequest = new Request(originUrl, request);
+    proxyRequest.headers.set('X-Forwarded-Host', requestUrl.host);
+    proxyRequest.headers.set('X-Forwarded-Proto', requestUrl.protocol.replace(':', ''));
+
+    return fetch(proxyRequest);
   },
 };

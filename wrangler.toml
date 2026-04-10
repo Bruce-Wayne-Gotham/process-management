@@ -3,6 +3,5 @@ main = "worker.js"
 compatibility_date = "2026-04-05"
 workers_dev = true
 
-[assets]
-directory = "./nextjs/.next/static"
-binding = "ASSETS"
+[vars]
+ORIGIN_URL = "https://process-management-4t4o.onrender.com"
