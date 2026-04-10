@@ -44,7 +44,28 @@ If you have Docker Desktop installed, you can initialize the database without ne
 - `nextjs/`: The main application source code.
 - `sql/`: Database schema and seed data.
 - `rds-setup/`: Utilities for AWS RDS verification.
+- `mcp/cloudflare-worker/`: MCP connector for Cloudflare Worker deploys.
 - `docs/`: (Coming soon) Detailed documentation.
+
+## Cloudflare Worker Deploys
+
+The repo includes a Cloudflare Worker proxy in `worker.js` and a Wrangler config in `wrangler.toml`.
+
+Install and run the deployment connector:
+
+```sh
+npm run mcp:cloudflare-worker:install
+npm run mcp:cloudflare-worker
+```
+
+Useful direct deploy commands:
+
+```sh
+npm run cf:deploy:dry-run
+npm run cf:deploy
+```
+
+Set `CLOUDFLARE_API_TOKEN` for non-interactive deploys, or run `npx wrangler login` locally before deploying.
 
 ## 📜 License
 

@@ -5,6 +5,10 @@
   "scripts": {
     "preinstall": "cd nextjs && (npm ci || npm install)",
     "build": "cd nextjs && npm run build",
-    "start": "cd nextjs && npm run start"
+    "start": "cd nextjs && npm run start",
+    "cf:deploy": "npx wrangler deploy --config wrangler.toml --minify",
+    "cf:deploy:dry-run": "npx wrangler deploy --config wrangler.toml --dry-run",
+    "mcp:cloudflare-worker": "npm --prefix mcp/cloudflare-worker start",
+    "mcp:cloudflare-worker:install": "npm install --prefix mcp/cloudflare-worker"
   }
 }
