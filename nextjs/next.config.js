@@ -14,11 +14,8 @@ const nextConfig = {
     maxInactiveAge: 60 * 1000,
     pagesBufferLength: 5,
   },
-  outputFileTracingIncludes: {
-    '/**/*': ['./sql/**/*'],
-  },
   experimental: {
-    isrMemoryCacheSize: 0, // Disable ISR memory cache
+    isrMemoryCacheSize: 0,
   },
 };
 

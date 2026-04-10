@@ -1,96 +1,70 @@
-import { Pool } from 'pg';
-import fs from 'fs';
-import path from 'path';
+import { getRequestContext } from '@cloudflare/next-on-pages';
 
-let pool;
-let initialized = false;
+/**
+ * Convert PostgreSQL $1/$2 positional params to SQLite ? placeholders.
+ * Handles out-of-order usage (e.g. WHERE id = $2 SET x = $1) by reordering
+ * the params array to match the left-to-right occurrence order in the SQL.
+ */
+function convertPgToSqlite(sql, params) {
+  if (!params || params.length === 0) {
+    return { sql: sql.replace(/\$\d+/g, '?'), params: [] };
+  }
 
-export async function query(text, params) {
-  // Auto-initialize on first query
-  if (!initialized) {
-    await initializeDatabase();
+  // Find all $N occurrences with their positions
+  const occurrences = [];
+  const regex = /\$(\d+)/g;
+  let match;
+  while ((match = regex.exec(sql)) !== null) {
+    occurrences.push({ pos: match.index, paramIndex: parseInt(match[1], 10) - 1 });
   }
-  
-  const start = Date.now();
-  try {
-    const res = await getPool().query(text, params);
-    const duration = Date.now() - start;
-    console.log('[DB] Query executed', { text, duration: `${duration}ms`, rows: res.rowCount });
-    return res;
-  } catch (err) {
-    console.error('[DB] Query error', { text, message: err.message, code: err.code });
-    throw err;
-  }
+
+  // Sort by position in SQL (left to right)
+  occurrences.sort((a, b) => a.pos - b.pos);
+
+  // Build reordered params to match left-to-right ? order
+  const reorderedParams = occurrences.map(o => params[o.paramIndex]);
+
+  return { sql: sql.replace(/\$\d+/g, '?'), params: reorderedParams };
 }
 
-function createPool() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error('DATABASE_URL is not defined');
-  }
-
-  console.log('[DB] Creating connection pool for', connectionString.split('@')[1] || 'URL');
-
-  return new Pool({
-    connectionString,
-    ssl: false, // Disabled SSL for RDS connection
-    connectionTimeoutMillis: 7000,
-    idleTimeoutMillis: 30000,
-    query_timeout: 20000,
-    max: 5,
-    min: 0,
-    keepAlive: true,
-    keepAliveInitialDelayMillis: 10000
+/**
+ * Auto-parse any string column values that are JSON objects or arrays.
+ * D1 returns json_object() and json_group_array() results as TEXT strings.
+ */
+function autoParseJson(rows) {
+  return rows.map(row => {
+    const out = {};
+    for (const [key, value] of Object.entries(row)) {
+      if (typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))) {
+        try { out[key] = JSON.parse(value); } catch { out[key] = value; }
+      } else {
+        out[key] = value;
+      }
+    }
+    return out;
   });
 }
 
-export function getPool() {
-  if (!pool) {
-    pool = createPool();
-  }
-  return pool;
+export function getDB() {
+  const { env } = getRequestContext();
+  return env.DB;
 }
 
-export async function initializeDatabase() {
-  if (initialized) {
-    return { success: true, message: 'Already initialized' };
-  }
+export async function query(sql, params = []) {
+  const db = getDB();
+  const { sql: d1Sql, params: d1Params } = convertPgToSqlite(sql, params);
 
-  try {
-    console.log('[DB] Initializing database schema...');
-    const client = await getPool().connect();
+  const isRead = /^\s*(SELECT|WITH)/i.test(sql.trim()) || /\bRETURNING\b/i.test(sql);
+  const stmt = d1Params.length > 0
+    ? db.prepare(d1Sql).bind(...d1Params)
+    : db.prepare(d1Sql);
 
-    try {
-      // Read and execute initialization SQL
-      const initPath = path.join(process.cwd(), 'INITIALIZE_DATABASE.sql');
-      
-      if (!fs.existsSync(initPath)) {
-        console.log('[DB] INITIALIZE_DATABASE.sql not found, skipping');
-        initialized = true;
-        return { success: true, message: 'No initialization file found' };
-      }
-
-      const sql = fs.readFileSync(initPath, 'utf-8');
-      await client.query(sql);
-      
-      console.log('[DB] ✅ Database schema initialized successfully');
-      initialized = true;
-      
-      return {
-        success: true,
-        message: 'Database initialized successfully'
-      };
-    } finally {
-      client.release();
-    }
-  } catch (err) {
-    console.error('[DB] ❌ Error initializing database:', err.message);
-    // Don't fail - tables might already exist
-    initialized = true;
-    return {
-      success: false,
-      message: err.message,
-      error: err
-    };
+  if (isRead) {
+    const result = await stmt.all();
+    const rows = autoParseJson(result.results || []);
+    return { rows, rowCount: rows.length };
+  } else {
+    const result = await stmt.run();
+    return { rows: [], rowCount: result.meta?.changes || 0 };
   }
 }

@@ -1,4 +1,5 @@
-const axios = require('axios');
+// E-Way Bill service rewritten to use native fetch (Workers-compatible).
+// Previously used axios which is not available in the edge runtime.
 
 class EWayBillService {
   constructor() {
@@ -15,29 +16,33 @@ class EWayBillService {
       return this.authToken;
     }
 
-    try {
-      const response = await axios.post(`${this.baseURL}/authenticate`, {
+    const response = await fetch(`${this.baseURL}/authenticate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         username: this.username,
         password: this.password,
         gstin: this.gstin
-      });
+      })
+    });
 
-      this.authToken = response.data.authtoken;
-      this.tokenExpiry = Date.now() + (6 * 60 * 60 * 1000); // 6 hours
-      return this.authToken;
-    } catch (error) {
-      console.error('[EWAY] Authentication failed:', error.message);
+    if (!response.ok) {
       throw new Error('E-Way Bill authentication failed');
     }
+
+    const data = await response.json();
+    this.authToken = data.authtoken;
+    this.tokenExpiry = Date.now() + 6 * 60 * 60 * 1000; // 6 hours
+    return this.authToken;
   }
 
   async generateEWayBill(lotData) {
     const authToken = await this.authenticate();
 
     const payload = {
-      supplyType: 'O', // Outward
-      subSupplyType: '1', // Supply
-      docType: 'INV', // Invoice
+      supplyType: 'O',
+      subSupplyType: '1',
+      docType: 'INV',
       docNo: lotData.lot_code,
       docDate: this.formatDate(lotData.lot_date),
       fromGstin: this.gstin,
@@ -46,13 +51,13 @@ class EWayBillService {
       fromPlace: process.env.COMPANY_CITY || 'City',
       fromPincode: parseInt(process.env.COMPANY_PINCODE || '000000'),
       fromStateCode: parseInt(process.env.COMPANY_STATE_CODE || '0'),
-      toGstin: lotData.buyer_gstin || 'URP', // Unregistered Person
+      toGstin: lotData.buyer_gstin || 'URP',
       toTrdName: lotData.buyer_name || 'Buyer',
       toAddr1: lotData.buyer_address || 'Address',
       toPlace: lotData.buyer_city || 'City',
       toPincode: parseInt(lotData.buyer_pincode || '000000'),
       toStateCode: parseInt(lotData.buyer_state_code || '0'),
-      transactionType: 1, // Regular
+      transactionType: 1,
       totalValue: parseFloat(lotData.total_value || 0),
       cgstValue: parseFloat(lotData.cgst || 0),
       sgstValue: parseFloat(lotData.sgst || 0),
@@ -62,11 +67,11 @@ class EWayBillService {
       transporterId: lotData.transporter_id || '',
       transporterName: lotData.transporter_name || '',
       transDocNo: lotData.transport_doc_no || '',
-      transMode: lotData.transport_mode || '1', // Road
+      transMode: lotData.transport_mode || '1',
       transDistance: parseInt(lotData.distance || 0),
       transDocDate: this.formatDate(lotData.transport_date || new Date()),
       vehicleNo: lotData.vehicle_no || '',
-      vehicleType: lotData.vehicle_type || 'R', // Regular
+      vehicleType: lotData.vehicle_type || 'R',
       itemList: [{
         productName: 'Tobacco',
         productDesc: `Lot ${lotData.lot_code}`,
@@ -82,29 +87,33 @@ class EWayBillService {
     };
 
     try {
-      const response = await axios.post(`${this.baseURL}/ewayapi/genewaybill`, payload, {
+      const response = await fetch(`${this.baseURL}/ewayapi/genewaybill`, {
+        method: 'POST',
         headers: {
-          'username': this.username,
-          'password': this.password,
-          'gstin': this.gstin,
-          'authtoken': authToken,
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+          username: this.username,
+          password: this.password,
+          gstin: this.gstin,
+          authtoken: authToken
+        },
+        body: JSON.stringify(payload)
       });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: data?.message || response.statusText };
+      }
 
       return {
         success: true,
-        ewayBillNo: response.data.ewayBillNo,
-        ewayBillDate: response.data.ewayBillDate,
-        validUpto: response.data.validUpto,
-        data: response.data
+        ewayBillNo: data.ewayBillNo,
+        ewayBillDate: data.ewayBillDate,
+        validUpto: data.validUpto,
+        data
       };
     } catch (error) {
-      console.error('[EWAY] Generation failed:', error.response?.data || error.message);
-      return {
-        success: false,
-        error: error.response?.data?.message || error.message
-      };
+      return { success: false, error: error.message };
     }
   }
 
@@ -112,19 +121,21 @@ class EWayBillService {
     const authToken = await this.authenticate();
 
     try {
-      const response = await axios.get(`${this.baseURL}/ewayapi/GetEwayBill`, {
-        params: { ewbNo: ewayBillNo },
+      const url = new URL(`${this.baseURL}/ewayapi/GetEwayBill`);
+      url.searchParams.set('ewbNo', ewayBillNo);
+
+      const response = await fetch(url.toString(), {
         headers: {
-          'username': this.username,
-          'password': this.password,
-          'gstin': this.gstin,
-          'authtoken': authToken
+          username: this.username,
+          password: this.password,
+          gstin: this.gstin,
+          authtoken: authToken
         }
       });
 
-      return { success: true, data: response.data };
+      const data = await response.json();
+      return response.ok ? { success: true, data } : { success: false, error: data?.message };
     } catch (error) {
-      console.error('[EWAY] Fetch failed:', error.message);
       return { success: false, error: error.message };
     }
   }
@@ -133,22 +144,25 @@ class EWayBillService {
     const authToken = await this.authenticate();
 
     try {
-      const response = await axios.post(`${this.baseURL}/ewayapi/canewb`, {
-        ewbNo: parseInt(ewayBillNo),
-        cancelRsnCode: parseInt(cancelReason),
-        cancelRmrk: cancelRemarks
-      }, {
+      const response = await fetch(`${this.baseURL}/ewayapi/canewb`, {
+        method: 'POST',
         headers: {
-          'username': this.username,
-          'password': this.password,
-          'gstin': this.gstin,
-          'authtoken': authToken
-        }
+          'Content-Type': 'application/json',
+          username: this.username,
+          password: this.password,
+          gstin: this.gstin,
+          authtoken: authToken
+        },
+        body: JSON.stringify({
+          ewbNo: parseInt(ewayBillNo),
+          cancelRsnCode: parseInt(cancelReason),
+          cancelRmrk: cancelRemarks
+        })
       });
 
-      return { success: true, data: response.data };
+      const data = await response.json();
+      return response.ok ? { success: true, data } : { success: false, error: data?.message };
     } catch (error) {
-      console.error('[EWAY] Cancel failed:', error.message);
       return { success: false, error: error.message };
     }
   }
@@ -157,9 +171,8 @@ class EWayBillService {
     const d = new Date(date);
     const day = String(d.getDate()).padStart(2, '0');
     const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    return `${day}/${month}/${year}`;
+    return `${day}/${month}/${d.getFullYear()}`;
   }
 }
 
-module.exports = new EWayBillService();
+export default new EWayBillService();

@@ -6,8 +6,11 @@
     "preinstall": "cd nextjs && (npm ci || npm install)",
     "build": "cd nextjs && npm run build",
     "start": "cd nextjs && npm run start",
-    "cf:deploy": "npx wrangler deploy --config wrangler.toml --minify",
-    "cf:deploy:dry-run": "npx wrangler deploy --config wrangler.toml --dry-run",
+    "pages:build": "cd nextjs && npm run pages:build",
+    "cf:deploy": "npx wrangler pages deploy nextjs/.vercel/output/static",
+    "cf:deploy:dry-run": "npx wrangler pages deploy nextjs/.vercel/output/static --dry-run",
+    "d1:init": "npx wrangler d1 execute tobacco-tracker --file=sql/schema.d1.sql",
+    "d1:init:local": "npx wrangler d1 execute tobacco-tracker --local --file=sql/schema.d1.sql",
     "mcp:cloudflare-worker": "npm --prefix mcp/cloudflare-worker start",
     "mcp:cloudflare-worker:install": "npm install --prefix mcp/cloudflare-worker"
   }

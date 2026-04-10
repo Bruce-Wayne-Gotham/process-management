@@ -1,41 +1,42 @@
-import { query } from '../../../lib/mongoDb';
+export const runtime = 'edge';
+
+import { findUser, updateUserLastLogin } from '../../../lib/mongoDb';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { username, password } = req.body;
+  const { username, password } = await req.json();
 
   if (!username || !password) {
     return res.status(400).json({ error: 'Username and password required' });
   }
 
   try {
-    const user = await query('users', 'findOne', { username, is_active: true });
+    const user = await findUser({ username, is_active: true });
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Simple password check
     if (user.password_hash !== password) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Update last login
-    await query('users', 'updateOne', {
-      filter: { _id: user._id },
-      update: { last_login: new Date() }
-    });
+    await updateUserLastLogin(user.id);
+
+    const permissions = user.permissions
+      ? (typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions)
+      : [];
 
     res.status(200).json({
       user: {
-        id: user._id.toString(),
+        id: user.id,
         username: user.username,
         role: user.role,
         fullName: user.full_name,
-        permissions: user.permissions || []
+        permissions
       }
     });
   } catch (error) {

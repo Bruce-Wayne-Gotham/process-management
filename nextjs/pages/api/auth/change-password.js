@@ -1,11 +1,14 @@
-import { query } from '../../../lib/mongoDb';
+export const runtime = 'edge';
+
+import { updateUserPassword } from '../../../lib/mongoDb';
+import { query } from '../../../lib/db';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { currentUserId, currentUserRole, targetUsername, newPassword } = req.body;
+  const { currentUserRole, targetUsername, newPassword } = await req.json();
 
   if (currentUserRole !== 'owner') {
     return res.status(403).json({ error: 'Only owner can change passwords' });
@@ -16,13 +19,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    // For simplicity, storing plain password (in production, use bcrypt)
-    const result = await query('users', 'updateOne', {
-      filter: { username: targetUsername },
-      update: { password_hash: newPassword }
-    });
+    const result = await updateUserPassword(targetUsername, newPassword);
 
-    if (result.modifiedCount === 0) {
+    if (result.rowCount === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
 
