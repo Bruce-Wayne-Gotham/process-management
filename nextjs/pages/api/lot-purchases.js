@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { query } from '../../lib/db';
 
 export default async function handler(req, res) {
@@ -8,7 +10,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { lot_id, purchase_id, used_weight } = req.body;
+      const { lot_id, purchase_id, used_weight } = await req.json();
 
       if (!lot_id || !purchase_id || !used_weight) {
         return res.status(400).json({ error: 'Lot ID, purchase ID, and used weight are required' });

@@ -1,16 +1,14 @@
-const dbService = require('../../lib/dbService');
+export const runtime = 'edge';
+
+import { query } from '../../lib/db';
 
 export default async function handler(req, res) {
   try {
-    const dbUrl = process.env.DATABASE_URL;
-    const hasDatabaseUrl = !!dbUrl;
-
     const response = {
       status: 'ok',
       timestamp: new Date().toISOString(),
       environment: {
-        nodeEnv: process.env.NODE_ENV,
-        hasDatabaseUrl: hasDatabaseUrl
+        nodeEnv: process.env.NODE_ENV
       },
       endpoints: {
         farmers: '/api/farmers',
@@ -21,32 +19,22 @@ export default async function handler(req, res) {
       }
     };
 
-    if (hasDatabaseUrl) {
-      try {
-        const result = await dbService.query('SELECT NOW() as current_time');
-        response.database = {
-          connected: true,
-          serverTime: result.rows[0]?.current_time,
-          initialized: dbService.initialized
-        };
-      } catch (dbError) {
-        response.database = {
-          connected: false,
-          error: dbError.message
-        };
-      }
-    } else {
+    try {
+      const result = await query("SELECT datetime('now') as current_time");
+      response.database = {
+        connected: true,
+        serverTime: result.rows[0]?.current_time,
+        engine: 'Cloudflare D1 (SQLite)'
+      };
+    } catch (dbError) {
       response.database = {
         connected: false,
-        error: 'DATABASE_URL is missing'
+        error: dbError.message
       };
     }
 
     return res.status(200).json(response);
   } catch (error) {
-    return res.status(500).json({
-      status: 'error',
-      message: error.message
-    });
+    return res.status(500).json({ status: 'error', message: error.message });
   }
 }

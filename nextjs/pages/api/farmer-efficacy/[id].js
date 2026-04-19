@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { query } from '../../../lib/db';
 
 export default async function handler(req, res) {
@@ -10,7 +12,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PUT') {
-      const { efficacy_score, efficacy_notes } = req.body;
+      const { efficacy_score, efficacy_notes } = await req.json();
       const result = await query(
         'UPDATE farmers SET efficacy_score = $1, efficacy_notes = $2 WHERE id = $3 RETURNING *',
         [efficacy_score || null, efficacy_notes || null, id]
@@ -30,4 +32,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: error.message || 'Internal server error' });
   }
 }
-

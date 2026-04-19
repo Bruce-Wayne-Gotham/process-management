@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { query } from '../../lib/db';
 
 export default async function handler(req, res) {
@@ -20,18 +22,18 @@ export default async function handler(req, res) {
         recentProcessesRes,
         recentPaymentsRes
       ] = await Promise.all([
-        query('SELECT COUNT(*)::int AS count FROM farmers'),
-        query('SELECT COUNT(*)::int AS count FROM purchases'),
-        query('SELECT COUNT(*)::int AS count FROM lots'),
-        query('SELECT COUNT(*)::int AS count FROM process'),
-        query('SELECT COUNT(*)::int AS count FROM jardi_output'),
-        query('SELECT COUNT(*)::int AS count FROM payments'),
-        query('SELECT COALESCE(SUM(total_amount), 0)::numeric AS sum FROM purchases'),
-        query('SELECT COALESCE(SUM(amount_paid), 0)::numeric AS sum FROM payments'),
-        query('SELECT COALESCE(SUM(input_weight), 0)::numeric AS sum FROM process'),
-        query('SELECT COALESCE(SUM(jardi_weight), 0)::numeric AS sum FROM jardi_output'),
+        query('SELECT COUNT(*) AS count FROM farmers'),
+        query('SELECT COUNT(*) AS count FROM purchases'),
+        query('SELECT COUNT(*) AS count FROM lots'),
+        query('SELECT COUNT(*) AS count FROM process'),
+        query('SELECT COUNT(*) AS count FROM jardi_output'),
+        query('SELECT COUNT(*) AS count FROM payments'),
+        query('SELECT COALESCE(SUM(total_amount), 0) AS sum FROM purchases'),
+        query('SELECT COALESCE(SUM(amount_paid), 0) AS sum FROM payments'),
+        query('SELECT COALESCE(SUM(input_weight), 0) AS sum FROM process'),
+        query('SELECT COALESCE(SUM(jardi_weight), 0) AS sum FROM jardi_output'),
         query(`
-          SELECT COALESCE(ps.label, 'Unknown') AS label, COUNT(*)::int AS count
+          SELECT COALESCE(ps.label, 'Unknown') AS label, COUNT(*) AS count
           FROM process p
           LEFT JOIN process_status ps ON ps.id = p.status_id
           GROUP BY COALESCE(ps.label, 'Unknown')
@@ -39,10 +41,8 @@ export default async function handler(req, res) {
         query('SELECT id, farmer_code, name, village, created_at FROM farmers ORDER BY created_at DESC LIMIT 5'),
         query(`
           SELECT
-            p.id,
-            p.purchase_date,
-            p.total_amount,
-            json_build_object('farmer_code', f.farmer_code, 'name', f.name) AS farmers
+            p.id, p.purchase_date, p.total_amount,
+            json_object('farmer_code', f.farmer_code, 'name', f.name) AS farmers
           FROM purchases p
           LEFT JOIN farmers f ON f.id = p.farmer_id
           ORDER BY p.purchase_date DESC, p.created_at DESC
@@ -50,12 +50,9 @@ export default async function handler(req, res) {
         `),
         query(`
           SELECT
-            pr.id,
-            pr.process_code,
-            pr.process_date,
-            pr.input_weight,
-            json_build_object('status_code', ps.status_code, 'label', ps.label) AS process_status,
-            json_build_object('lot_code', l.lot_code) AS lots
+            pr.id, pr.process_code, pr.process_date, pr.input_weight,
+            json_object('status_code', ps.status_code, 'label', ps.label) AS process_status,
+            json_object('lot_code', l.lot_code) AS lots
           FROM process pr
           LEFT JOIN process_status ps ON ps.id = pr.status_id
           LEFT JOIN lots l ON l.id = pr.lot_id
@@ -64,13 +61,10 @@ export default async function handler(req, res) {
         `),
         query(`
           SELECT
-            pay.id,
-            pay.payment_date,
-            pay.amount_paid,
-            pay.payment_mode,
-            json_build_object(
+            pay.id, pay.payment_date, pay.amount_paid, pay.payment_mode,
+            json_object(
               'id', pur.id,
-              'farmers', json_build_object('farmer_code', f.farmer_code, 'name', f.name)
+              'farmers', json_object('farmer_code', f.farmer_code, 'name', f.name)
             ) AS purchases
           FROM payments pay
           LEFT JOIN purchases pur ON pur.id = pay.purchase_id
@@ -80,12 +74,12 @@ export default async function handler(req, res) {
         `)
       ]);
 
-      const totalFarmers = farmersCountRes.rows?.[0]?.count || 0;
-      const totalPurchases = purchasesCountRes.rows?.[0]?.count || 0;
-      const totalLots = lotsCountRes.rows?.[0]?.count || 0;
-      const totalProcesses = processesCountRes.rows?.[0]?.count || 0;
-      const totalJardiOutputs = jardiCountRes.rows?.[0]?.count || 0;
-      const totalPayments = paymentsCountRes.rows?.[0]?.count || 0;
+      const totalFarmers = Number(farmersCountRes.rows?.[0]?.count || 0);
+      const totalPurchases = Number(purchasesCountRes.rows?.[0]?.count || 0);
+      const totalLots = Number(lotsCountRes.rows?.[0]?.count || 0);
+      const totalProcesses = Number(processesCountRes.rows?.[0]?.count || 0);
+      const totalJardiOutputs = Number(jardiCountRes.rows?.[0]?.count || 0);
+      const totalPayments = Number(paymentsCountRes.rows?.[0]?.count || 0);
 
       const purchaseSum = Number(purchaseSumRes.rows?.[0]?.sum || 0);
       const paymentSum = Number(paymentSumRes.rows?.[0]?.sum || 0);
@@ -93,29 +87,14 @@ export default async function handler(req, res) {
       const totalJardiWeight = Number(jardiWeightRes.rows?.[0]?.sum || 0);
 
       const processStatusBreakdown = (statusBreakdownRes.rows || []).reduce((acc, row) => {
-        acc[row.label] = row.count;
+        acc[row.label] = Number(row.count);
         return acc;
       }, {});
 
-      const dashboardData = {
-        counts: {
-          farmers: totalFarmers,
-          purchases: totalPurchases,
-          lots: totalLots,
-          processes: totalProcesses,
-          jardiOutputs: totalJardiOutputs,
-          payments: totalPayments
-        },
-        financial: {
-          totalPurchaseAmount: purchaseSum,
-          totalPaymentAmount: paymentSum,
-          pendingPayments: purchaseSum - paymentSum
-        },
-        weights: {
-          totalInputWeight,
-          totalJardiWeight,
-          overallYield: totalInputWeight > 0 ? (totalJardiWeight / totalInputWeight) * 100 : 0
-        },
+      return res.status(200).json({
+        counts: { farmers: totalFarmers, purchases: totalPurchases, lots: totalLots, processes: totalProcesses, jardiOutputs: totalJardiOutputs, payments: totalPayments },
+        financial: { totalPurchaseAmount: purchaseSum, totalPaymentAmount: paymentSum, pendingPayments: purchaseSum - paymentSum },
+        weights: { totalInputWeight, totalJardiWeight, overallYield: totalInputWeight > 0 ? (totalJardiWeight / totalInputWeight) * 100 : 0 },
         processStatusBreakdown,
         recentActivities: {
           farmers: recentFarmersRes.rows || [],
@@ -123,9 +102,7 @@ export default async function handler(req, res) {
           processes: recentProcessesRes.rows || [],
           payments: recentPaymentsRes.rows || []
         }
-      };
-
-      return res.status(200).json(dashboardData);
+      });
     } catch (error) {
       console.error('Dashboard API error:', error);
       return res.status(500).json({ error: 'Internal server error' });

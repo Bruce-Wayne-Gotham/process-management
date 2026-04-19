@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { query } from '../../lib/db';
 
 export default async function handler(req, res) {
@@ -15,11 +17,11 @@ export default async function handler(req, res) {
       const sql = `
         SELECT
           pay.*,
-          json_build_object(
+          json_object(
             'id', p.id,
             'purchase_date', p.purchase_date,
             'total_amount', p.total_amount,
-            'farmers', json_build_object(
+            'farmers', json_object(
               'name', f.name,
               'farmer_code', f.farmer_code,
               'village', f.village
@@ -42,7 +44,7 @@ export default async function handler(req, res) {
         payment_mode = 'CASH',
         transaction_ref,
         remarks
-      } = req.body;
+      } = await req.json();
 
       if (!purchase_id || !payment_date || !amount_paid) {
         return res.status(400).json({
@@ -50,31 +52,30 @@ export default async function handler(req, res) {
         });
       }
 
-      const insertSql = `
-        INSERT INTO payments (
+      const inserted = await query(
+        `INSERT INTO payments (
           purchase_id, payment_date, amount_paid, payment_mode, transaction_ref, remarks
         ) VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING *
-      `;
-
-      const inserted = await query(insertSql, [
-        Number(purchase_id),
-        payment_date,
-        Number(amount_paid),
-        payment_mode,
-        transaction_ref || null,
-        remarks || null
-      ]);
+        RETURNING *`,
+        [
+          Number(purchase_id),
+          payment_date,
+          Number(amount_paid),
+          payment_mode,
+          transaction_ref || null,
+          remarks || null
+        ]
+      );
 
       const row = inserted.rows?.[0];
-      const selectSql = `
-        SELECT
+      const result = await query(
+        `SELECT
           pay.*,
-          json_build_object(
+          json_object(
             'id', p.id,
             'purchase_date', p.purchase_date,
             'total_amount', p.total_amount,
-            'farmers', json_build_object(
+            'farmers', json_object(
               'name', f.name,
               'farmer_code', f.farmer_code,
               'village', f.village
@@ -83,10 +84,9 @@ export default async function handler(req, res) {
         FROM payments pay
         LEFT JOIN purchases p ON p.id = pay.purchase_id
         LEFT JOIN farmers f ON f.id = p.farmer_id
-        WHERE pay.id = $1
-      `;
-
-      const result = await query(selectSql, [row.id]);
+        WHERE pay.id = $1`,
+        [row.id]
+      );
       return res.status(201).json(normalizePaymentRow(result.rows?.[0]));
     }
 

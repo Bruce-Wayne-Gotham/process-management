@@ -1,8 +1,9 @@
+export const runtime = 'edge';
+
 import { query } from '../../lib/db';
 
 export default async function handler(req, res) {
-
-  function normalizePurchaseRow(row) {
+  function normalizeRow(row) {
     return {
       ...row,
       farmer_id: row.farmer_id !== null ? Number(row.farmer_id) : null,
@@ -15,34 +16,31 @@ export default async function handler(req, res) {
     };
   }
 
+  const joinSql = (whereClause = '') => `
+    SELECT
+      p.*,
+      json_object(
+        'farmer_code', f.farmer_code,
+        'name', f.name,
+        'village', f.village
+      ) AS farmers
+    FROM purchases p
+    LEFT JOIN farmers f ON f.id = p.farmer_id
+    ${whereClause}
+    ORDER BY p.purchase_date DESC, p.created_at DESC
+  `;
+
   try {
     if (req.method === 'GET') {
-      const sql = `
-        SELECT
-          p.*, 
-          json_build_object(
-            'farmer_code', f.farmer_code,
-            'name', f.name,
-            'village', f.village
-          ) AS farmers
-        FROM purchases p
-        LEFT JOIN farmers f ON f.id = p.farmer_id
-        ORDER BY p.purchase_date DESC, p.created_at DESC
-      `;
-      const result = await query(sql);
-      return res.status(200).json((result.rows || []).map(normalizePurchaseRow));
+      const result = await query(joinSql());
+      return res.status(200).json((result.rows || []).map(normalizeRow));
     }
 
     if (req.method === 'POST') {
       const {
-        farmer_id,
-        purchase_date,
-        packaging_type,
-        process_weight,
-        packaging_weight,
-        rate_per_kg,
-        remarks
-      } = req.body;
+        farmer_id, purchase_date, packaging_type,
+        process_weight, packaging_weight, rate_per_kg, remarks
+      } = await req.json();
 
       if (!farmer_id || !purchase_date || !packaging_type || !process_weight || !rate_per_kg) {
         return res.status(400).json({
@@ -51,49 +49,25 @@ export default async function handler(req, res) {
       }
 
       if (!['BODH', 'BAG'].includes(packaging_type)) {
-        return res.status(400).json({
-          error: 'packaging_type must be either BODH or BAG'
-        });
+        return res.status(400).json({ error: 'packaging_type must be either BODH or BAG' });
       }
 
-      const processWeightNum = Number(process_weight);
-      const packagingWeightNum = Number(packaging_weight) || 0;
-      const ratePerKgNum = Number(rate_per_kg);
-
-      const insertSql = `
-        INSERT INTO purchases (
+      const inserted = await query(
+        `INSERT INTO purchases (
           farmer_id, purchase_date, packaging_type,
           process_weight, packaging_weight, rate_per_kg, remarks
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING *
-      `;
-
-      const inserted = await query(insertSql, [
-        Number(farmer_id),
-        purchase_date,
-        packaging_type,
-        processWeightNum,
-        packagingWeightNum,
-        ratePerKgNum,
-        remarks || null
-      ]);
+        RETURNING *`,
+        [
+          Number(farmer_id), purchase_date, packaging_type,
+          Number(process_weight), Number(packaging_weight) || 0,
+          Number(rate_per_kg), remarks || null
+        ]
+      );
 
       const row = inserted.rows?.[0];
-
-      const selectSql = `
-        SELECT
-          p.*, 
-          json_build_object(
-            'farmer_code', f.farmer_code,
-            'name', f.name,
-            'village', f.village
-          ) AS farmers
-        FROM purchases p
-        LEFT JOIN farmers f ON f.id = p.farmer_id
-        WHERE p.id = $1
-      `;
-      const result = await query(selectSql, [row.id]);
-      return res.status(201).json(normalizePurchaseRow(result.rows?.[0]));
+      const result = await query(joinSql('WHERE p.id = $1'), [row.id]);
+      return res.status(201).json(normalizeRow(result.rows?.[0]));
     }
 
     res.setHeader('Allow', ['GET', 'POST']);

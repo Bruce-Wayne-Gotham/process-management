@@ -1,6 +1,8 @@
-export default async function handler(req, res) {
-  const { query } = await import('../../../lib/db');
+export const runtime = 'edge';
 
+import { query } from '../../../lib/db';
+
+export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       const result = await query('SELECT * FROM process_status ORDER BY id ASC');

@@ -1,10 +1,9 @@
-// Supabase integration removed.
-// This API endpoint previously performed Supabase-based DB setup. It now directs
-// callers to apply the canonical SQL schema manually.
+export const runtime = 'edge';
 
 export default async function handler(req, res) {
-  res.status(410).json({
-    error: 'Supabase integration removed',
-    message: 'This endpoint no longer performs automated setup. Apply `sql/schema.sql` manually to your Postgres database and remove this endpoint if unnecessary.'
+  return res.status(410).json({
+    error: 'Database setup endpoint is deprecated',
+    message: 'Apply sql/schema.d1.sql to your D1 database: npm run d1:init',
+    status: 'discontinued'
   });
 }
