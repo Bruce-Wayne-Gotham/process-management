@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "cloudflare-worker": {
+      "command": "node",
+      "args": ["./mcp/cloudflare-worker/server.js"]
+    }
+  }
+}

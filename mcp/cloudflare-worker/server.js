@@ -156,6 +156,53 @@ server.setRequestHandler('listTools', async () => ({
         }),
       }),
     },
+    {
+      name: 'cloudflareWorker.fetchEndpoint',
+      description: 'Makes an HTTP GET or POST request to the deployed Cloudflare Worker URL and returns the response.',
+      inputSchema: jsonSchema.object({
+        url: jsonSchema.string({
+          description: 'Full URL to fetch from the Cloudflare Worker.',
+        }),
+        method: jsonSchema.string({
+          description: 'HTTP method, e.g. GET or POST.',
+          default: 'GET',
+          nullable: true,
+        }),
+        body: jsonSchema.string({
+          description: 'JSON body string for POST requests.',
+          nullable: true,
+        }),
+        headers: jsonSchema.object({}),
+      }),
+    },
+    {
+      name: 'cloudflareWorker.queryD1',
+      description: 'Executes a read-only SQL query (SELECT, PRAGMA, or EXPLAIN) against the D1 database using wrangler d1 execute.',
+      inputSchema: jsonSchema.object({
+        sql: jsonSchema.string({
+          description: 'SQL SELECT query to execute. Must start with SELECT, PRAGMA, or EXPLAIN.',
+        }),
+        database: jsonSchema.string({
+          description: 'D1 database name.',
+          default: 'tobacco-tracker',
+          nullable: true,
+        }),
+        envName: jsonSchema.string({
+          description: 'Optional Wrangler environment name.',
+          nullable: true,
+        }),
+      }),
+    },
+    {
+      name: 'cloudflareWorker.listD1Tables',
+      description: 'Lists all tables in the D1 database.',
+      inputSchema: jsonSchema.object({
+        envName: jsonSchema.string({
+          description: 'Optional Wrangler environment name.',
+          nullable: true,
+        }),
+      }),
+    },
   ],
 }));
 
@@ -192,6 +239,70 @@ server.setRequestHandler('callTool', async (request) => {
     output = await runWrangler(varArgs, {
       input: args.originUrl,
     });
+  } else if (name === 'cloudflareWorker.fetchEndpoint') {
+    if (!args.url || typeof args.url !== 'string') {
+      throw new Error('url is required and must be a string.');
+    }
+    new URL(args.url);
+    const method = (args.method ?? 'GET').toUpperCase();
+    const fetchOptions = {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(args.headers ?? {}),
+      },
+    };
+    if (args.body && method !== 'GET' && method !== 'HEAD') {
+      fetchOptions.body = args.body;
+    }
+    const response = await fetch(args.url, fetchOptions);
+    const contentType = response.headers.get('content-type') ?? '';
+    let responseBody;
+    if (contentType.includes('application/json')) {
+      const json = await response.json();
+      responseBody = JSON.stringify(json, null, 2);
+    } else {
+      responseBody = await response.text();
+    }
+    const headerEntries = {};
+    response.headers.forEach((value, key) => {
+      headerEntries[key] = value;
+    });
+    output = JSON.stringify({
+      status: response.status,
+      statusText: response.statusText,
+      headers: headerEntries,
+      body: responseBody,
+    }, null, 2);
+  } else if (name === 'cloudflareWorker.queryD1') {
+    if (!args.sql || typeof args.sql !== 'string') {
+      throw new Error('sql is required and must be a string.');
+    }
+    const trimmedSql = args.sql.trim();
+    if (!/^(SELECT|PRAGMA|EXPLAIN)\s/i.test(trimmedSql)) {
+      throw new Error('Only SELECT, PRAGMA, or EXPLAIN queries are allowed.');
+    }
+    const database = args.database ?? 'tobacco-tracker';
+    const d1Args = [
+      'd1', 'execute', database,
+      '--command', trimmedSql,
+      '--config', wranglerConfig,
+    ];
+    if (args.envName) {
+      d1Args.push('--env', args.envName);
+    }
+    output = await runWrangler(d1Args);
+  } else if (name === 'cloudflareWorker.listD1Tables') {
+    const sql = "SELECT name FROM sqlite_master WHERE type='table'";
+    const d1Args = [
+      'd1', 'execute', 'tobacco-tracker',
+      '--command', sql,
+      '--config', wranglerConfig,
+    ];
+    if (args.envName) {
+      d1Args.push('--env', args.envName);
+    }
+    output = await runWrangler(d1Args);
   } else {
     throw new Error(`Unsupported tool: ${name}`);
   }

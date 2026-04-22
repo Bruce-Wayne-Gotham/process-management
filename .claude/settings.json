@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/usr/local/bin/npm install *)",
+      "Bash(/opt/homebrew/bin/npm install *)"
+    ]
+  }
+}
