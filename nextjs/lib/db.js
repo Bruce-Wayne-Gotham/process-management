@@ -31,8 +31,11 @@ function createPool() {
 
   console.log('[DB] Creating connection pool for', connectionString.split('@')[1] || 'URL');
 
-  const isRender = connectionString.includes('render.com');
-  const sslConfig = isRender ? { rejectUnauthorized: false } : false;
+  const needsSsl = connectionString.includes('render.com') ||
+    connectionString.includes('rds.amazonaws.com') ||
+    connectionString.includes('sslmode=require') ||
+    connectionString.includes('sslmode=no-verify');
+  const sslConfig = needsSsl ? { rejectUnauthorized: false } : false;
 
   return new Pool({
     connectionString,
