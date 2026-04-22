@@ -1,4 +1,4 @@
-import { query } from '../../../lib/mongoDb';
+import { query } from '../../../lib/db';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -12,26 +12,22 @@ export default async function handler(req, res) {
   }
 
   try {
-    const user = await query('users', 'findOne', { username, is_active: true });
+    const result = await query(
+      'SELECT id, username, password_hash, role, full_name, permissions FROM users WHERE username = $1 AND is_active = true',
+      [username]
+    );
 
-    if (!user) {
+    const user = result.rows[0];
+
+    if (!user || user.password_hash !== password) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Simple password check
-    if (user.password_hash !== password) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    // Update last login
-    await query('users', 'updateOne', {
-      filter: { _id: user._id },
-      update: { last_login: new Date() }
-    });
+    await query('UPDATE users SET last_login = NOW() WHERE id = $1', [user.id]);
 
     res.status(200).json({
       user: {
-        id: user._id.toString(),
+        id: user.id,
         username: user.username,
         role: user.role,
         fullName: user.full_name,
