@@ -1,3 +1,12 @@
+databases:
+  # ---------------------------------------------------------------------------
+  # RENDER POSTGRESQL DATABASE
+  # ---------------------------------------------------------------------------
+  - name: tobacco-tracker-db
+    plan: free
+    databaseName: tobacco_tracker
+    user: tobacco_tracker_user
+
 services:
   # ---------------------------------------------------------------------------
   # 1. APPLICATION CONTAINER (Web Service)
@@ -8,15 +17,13 @@ services:
     plan: free
     dockerContext: .
     dockerfilePath: nextjs/Dockerfile
-    # AUTOMATED SETUP: This runs before the app goes live on every push
-    preDeployCommand: node render-setup/setup-database.js
     envVars:
       - key: DATABASE_URL
-        fromEnvVar: DATABASE_URL
+        fromDatabase:
+          name: tobacco-tracker-db
+          property: connectionString
       - key: NODE_ENV
         value: production
-      - key: AWS_RDS_CA_CERT_PATH
-        value: ./certs/rds-ca-bundle.pem
 
   # ---------------------------------------------------------------------------
   # 2. INTERNAL ANALYTICS / MCP CONTAINER (Private Service)

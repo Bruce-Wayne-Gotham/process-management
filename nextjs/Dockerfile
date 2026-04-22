@@ -35,12 +35,11 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
-# Copy MongoDB setup script from parent context
-COPY setup-mongodb.js ./setup-mongodb.js
+# Copy startup script and DB init SQL from repo root context
+COPY nextjs/start.sh ./start.sh
+COPY INITIALIZE_DATABASE.sql ./INITIALIZE_DATABASE.sql
+RUN chmod +x ./start.sh
 
 EXPOSE 3000
 
-# Start script that initializes MongoDB then starts the app
-RUN echo '#!/bin/bash\nset -e\necho "⏳ Waiting for MongoDB to be ready..."\nnode setup-mongodb.js\necho "✅ MongoDB initialized"\nnpm start' > /app/start-with-mongo.sh && chmod +x /app/start-with-mongo.sh
-
-CMD ["/app/start-with-mongo.sh"]
+CMD ["./start.sh"]

@@ -31,9 +31,12 @@ function createPool() {
 
   console.log('[DB] Creating connection pool for', connectionString.split('@')[1] || 'URL');
 
+  const isRender = connectionString.includes('render.com');
+  const sslConfig = isRender ? { rejectUnauthorized: false } : false;
+
   return new Pool({
     connectionString,
-    ssl: false, // Disabled SSL for RDS connection
+    ssl: sslConfig,
     connectionTimeoutMillis: 7000,
     idleTimeoutMillis: 30000,
     query_timeout: 20000,
