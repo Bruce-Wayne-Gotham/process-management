@@ -50,8 +50,25 @@ function createPool() {
 export function getPool() {
   if (!pool) {
     pool = createPool();
+    startKeepalive();
   }
   return pool;
+}
+
+let keepaliveInterval;
+
+function startKeepalive() {
+  if (keepaliveInterval) return;
+  // Ping every 4 minutes to prevent free-tier database from going idle
+  keepaliveInterval = setInterval(async () => {
+    try {
+      await pool.query('SELECT 1');
+      console.log('[DB] Keepalive ping sent');
+    } catch (err) {
+      console.error('[DB] Keepalive ping failed:', err.message);
+    }
+  }, 4 * 60 * 1000);
+  keepaliveInterval.unref(); // don't block process exit
 }
 
 export async function initializeDatabase() {
